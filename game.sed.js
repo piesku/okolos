@@ -1607,6 +1607,42 @@ let index_arr = Uint16Array.from([
 2, 1, 0
 ]);
 
+function set$1(out, x, y, z) {
+out[0] = x;
+out[1] = y;
+out[2] = z;
+return out;
+}
+function copy$1(out, a) {
+out[0] = a[0];
+out[1] = a[1];
+out[2] = a[2];
+return out;
+}
+function add(out, a, b) {
+out[0] = a[0] + b[0];
+out[1] = a[1] + b[1];
+out[2] = a[2] + b[2];
+return out;
+}
+function subtract(out, a, b) {
+out[0] = a[0] - b[0];
+out[1] = a[1] - b[1];
+out[2] = a[2] - b[2];
+return out;
+}
+function scale(out, a, b) {
+out[0] = a[0] * b;
+out[1] = a[1] * b;
+out[2] = a[2] * b;
+return out;
+}
+function negate(out, a) {
+out[0] = -a[0];
+out[1] = -a[1];
+out[2] = -a[2];
+return out;
+}
 function normalize(out, a) {
 let x = a[0];
 let y = a[1];
@@ -1620,6 +1656,34 @@ out[0] = a[0] * len;
 out[1] = a[1] * len;
 out[2] = a[2] * len;
 return out;
+}
+function dot(a, b) {
+return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+function transform_position(out, a, m) {
+let x = a[0];
+let y = a[1];
+let z = a[2];
+let w = m[3] * x + m[7] * y + m[11] * z + m[15] || 1;
+out[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
+out[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
+out[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+return out;
+}
+function transform_direction(out, a, m) {
+let x = a[0];
+let y = a[1];
+let z = a[2];
+out[0] = m[0] * x + m[4] * y + m[8] * z;
+out[1] = m[1] * x + m[5] * y + m[9] * z;
+out[2] = m[2] * x + m[6] * y + m[10] * z;
+return out;
+}
+function length(a) {
+let x = a[0];
+let y = a[1];
+let z = a[2];
+return Math.hypot(x, y, z);
 }
 
 function create() {
@@ -1684,7 +1748,7 @@ out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det;
 out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
 return out;
 }
-function multiply(out, a, b) {
+function multiply$1(out, a, b) {
 let a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
 let a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
 let a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
@@ -1802,11 +1866,11 @@ perspective(projection.Projection, projection.FovY / aspect, aspect, projection.
 invert(projection.Inverse, projection.Projection);
 }
 
-const QUERY$5 = 32 /* Transform */ | 1 /* Camera */;
+const QUERY$b = 512 /* Transform */ | 1 /* Camera */;
 function sys_camera(game, delta) {
 game.Camera = undefined;
 for (let i = 0; i < game.World.Signature.length; i++) {
-if ((game.World.Signature[i] & QUERY$5) === QUERY$5) {
+if ((game.World.Signature[i] & QUERY$b) === QUERY$b) {
 let camera = game.World.Camera[i];
 if (camera.Kind === 1 /* Xr */ && game.XrFrame) {
 update_xr(game, i, camera);
@@ -1834,7 +1898,7 @@ break;
 }
 let transform = game.World.Transform[entity];
 copy(camera.View, transform.Self);
-multiply(camera.Pv, camera.Projection.Projection, camera.View);
+multiply$1(camera.Pv, camera.Projection.Projection, camera.View);
 get_translation(camera.Position, transform.World);
 }
 function update_xr(game, entity, camera) {
@@ -1850,13 +1914,167 @@ Pv: create(),
 Position: [0, 0, 0],
 };
 
-multiply(eye.View, transform.World, viewpoint.transform.matrix);
+multiply$1(eye.View, transform.World, viewpoint.transform.matrix);
 get_translation(eye.Position, eye.View);
 
 invert(eye.View, eye.View);
 
-multiply(eye.Pv, viewpoint.projectionMatrix, eye.View);
+multiply$1(eye.Pv, viewpoint.projectionMatrix, eye.View);
 camera.Eyes.push(eye);
+}
+}
+
+const BOX = [
+[0.5, 0.5, 0.5],
+[0.5, 0.5, -0.5],
+[-0.5, 0.5, -0.5],
+[-0.5, 0.5, 0.5],
+[0.5, -0.5, 0.5],
+[0.5, -0.5, -0.5],
+[-0.5, -0.5, -0.5],
+[-0.5, -0.5, 0.5],
+];
+/**
+* Computes the AABB based on the translation, rotation and scale of the
+* transform. This is the most accurate function from the compute_aabb family.
+*/
+function compute_aabb(world, aabb) {
+get_translation(aabb.Center, world);
+
+let min_x, min_y, min_z, max_x, max_y, max_z;
+min_x = max_x = aabb.Center[0];
+min_y = max_y = aabb.Center[1];
+min_z = max_z = aabb.Center[2];
+
+
+let world_vertex = [0, 0, 0];
+for (let i = 0; i < 8; i++) {
+let bb_vertex = BOX[i];
+
+world_vertex[0] = bb_vertex[0] * aabb.Size[0];
+world_vertex[1] = bb_vertex[1] * aabb.Size[1];
+world_vertex[2] = bb_vertex[2] * aabb.Size[2];
+transform_position(world_vertex, world_vertex, world);
+if (world_vertex[0] < min_x) {
+min_x = world_vertex[0];
+}
+if (world_vertex[0] > max_x) {
+max_x = world_vertex[0];
+}
+if (world_vertex[1] < min_y) {
+min_y = world_vertex[1];
+}
+if (world_vertex[1] > max_y) {
+max_y = world_vertex[1];
+}
+if (world_vertex[2] < min_z) {
+min_z = world_vertex[2];
+}
+if (world_vertex[2] > max_z) {
+max_z = world_vertex[2];
+}
+}
+
+aabb.Min = [min_x, min_y, min_z];
+aabb.Max = [max_x, max_y, max_z];
+
+aabb.Half[0] = (max_x - min_x) / 2;
+aabb.Half[1] = (max_y - min_y) / 2;
+aabb.Half[2] = (max_z - min_z) / 2;
+}
+function penetrate_aabb(a, b) {
+let distance_x = a.Center[0] - b.Center[0];
+let penetration_x = a.Half[0] + b.Half[0] - Math.abs(distance_x);
+let distance_y = a.Center[1] - b.Center[1];
+let penetration_y = a.Half[1] + b.Half[1] - Math.abs(distance_y);
+let distance_z = a.Center[2] - b.Center[2];
+let penetration_z = a.Half[2] + b.Half[2] - Math.abs(distance_z);
+if (penetration_x < penetration_y && penetration_x < penetration_z) {
+return [penetration_x * Math.sign(distance_x), 0, 0];
+}
+else if (penetration_y < penetration_z) {
+return [0, penetration_y * Math.sign(distance_y), 0];
+}
+else {
+return [0, 0, penetration_z * Math.sign(distance_z)];
+}
+}
+function intersect_aabb(a, b) {
+return (a.Min[0] < b.Max[0] &&
+a.Max[0] > b.Min[0] &&
+a.Min[1] < b.Max[1] &&
+a.Max[1] > b.Min[1] &&
+a.Min[2] < b.Max[2] &&
+a.Max[2] > b.Min[2]);
+}
+
+/**
+* @module systems/sys_collide
+*/
+const QUERY$a = 512 /* Transform */ | 4 /* Collide */;
+function sys_collide(game, delta) {
+
+let static_colliders = [];
+let dynamic_colliders = [];
+for (let i = 0; i < game.World.Signature.length; i++) {
+if ((game.World.Signature[i] & QUERY$a) === QUERY$a) {
+let transform = game.World.Transform[i];
+let collider = game.World.Collide[i];
+
+collider.Collisions = [];
+if (collider.New) {
+collider.New = false;
+compute_aabb(transform.World, collider);
+}
+else if (collider.Dynamic) {
+compute_aabb(transform.World, collider);
+dynamic_colliders.push(collider);
+}
+else {
+static_colliders.push(collider);
+}
+}
+}
+for (let i = 0; i < dynamic_colliders.length; i++) {
+check_collisions(dynamic_colliders[i], static_colliders, static_colliders.length);
+check_collisions(dynamic_colliders[i], dynamic_colliders, i);
+}
+}
+/**
+* Check for collisions between a dynamic collider and other colliders. Length
+* is used to control how many colliders to check against. For collisions
+* with static colliders, length should be equal to colliders.length, since
+* we want to consider all static colliders in the scene. For collisions with
+* other dynamic colliders, we only need to check a pair of colliders once.
+* Varying length allows to skip half of the NxN checks matrix.
+*
+* @param game The game instance.
+* @param collider The current collider.
+* @param colliders Other colliders to test against.
+* @param length How many colliders to check.
+*/
+function check_collisions(collider, colliders, length) {
+for (let i = 0; i < length; i++) {
+let other = colliders[i];
+let collider_can_intersect = collider.Mask & other.Layers;
+let other_can_intersect = other.Mask & collider.Layers;
+if (collider_can_intersect || other_can_intersect) {
+if (intersect_aabb(collider, other)) {
+let hit = penetrate_aabb(collider, other);
+if (collider_can_intersect) {
+collider.Collisions.push({
+Other: other.EntityId,
+Hit: hit,
+});
+}
+if (other_can_intersect) {
+other.Collisions.push({
+Other: collider.EntityId,
+Hit: negate([0, 0, 0], hit),
+});
+}
+}
+}
 }
 }
 
@@ -1864,6 +2082,24 @@ function map_range(value, old_min, old_max, new_min, new_max) {
 return ((value - old_min) / (old_max - old_min)) * (new_max - new_min) + new_min;
 }
 
+const EPSILON = 0.000001;
+
+function set(out, x, y, z, w) {
+out[0] = x;
+out[1] = y;
+out[2] = z;
+out[3] = w;
+return out;
+}
+function multiply(out, a, b) {
+let ax = a[0], ay = a[1], az = a[2], aw = a[3];
+let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+out[0] = ax * bw + aw * bx + ay * bz - az * by;
+out[1] = ay * bw + aw * by + az * bx - ax * bz;
+out[2] = az * bw + aw * bz + ax * by - ay * bx;
+out[3] = aw * bw - ax * bx - ay * by - az * bz;
+return out;
+}
 /**
 * Compute a quaternion from an axis and an angle of rotation around the axis.
 * @param out Quaternion to write to.
@@ -1878,27 +2114,65 @@ out[2] = Math.sin(half) * axis[2];
 out[3] = Math.cos(half);
 return out;
 }
+/**
+* Performs a spherical linear interpolation between two quat
+*
+* @param out - the receiving quaternion
+* @param a - the first operand
+* @param b - the second operand
+* @param t - interpolation amount, in the range [0-1], between the two inputs
+*/
+function slerp(out, a, b, t) {
 
-const QUERY$4 = 32 /* Transform */ | 4 /* ControlXr */ | 2 /* Children */;
+
+let ax = a[0], ay = a[1], az = a[2], aw = a[3];
+let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+let omega, cosom, sinom, scale0, scale1;
+
+cosom = ax * bx + ay * by + az * bz + aw * bw;
+
+if (cosom < 0.0) {
+cosom = -cosom;
+bx = -bx;
+by = -by;
+bz = -bz;
+bw = -bw;
+}
+
+if (1.0 - cosom > EPSILON) {
+
+omega = Math.acos(cosom);
+sinom = Math.sin(omega);
+scale0 = Math.sin((1.0 - t) * omega) / sinom;
+scale1 = Math.sin(t * omega) / sinom;
+}
+else {
+
+
+scale0 = 1.0 - t;
+scale1 = t;
+}
+
+out[0] = scale0 * ax + scale1 * bx;
+out[1] = scale0 * ay + scale1 * by;
+out[2] = scale0 * az + scale1 * bz;
+out[3] = scale0 * aw + scale1 * bw;
+return out;
+}
+
+const QUERY$9 = 512 /* Transform */ | 16 /* ControlXr */ | 2 /* Children */;
 const AXIS_Y = [0, 1, 0];
 function sys_control_oculus(game, delta) {
 if (!game.XrFrame) {
 return;
 }
-game.XrInputs = {};
-for (let input of game.XrFrame.session.inputSources) {
-if (input.gripSpace) {
-game.XrInputs[input.handedness] = input;
-}
-}
 for (let i = 0; i < game.World.Signature.length; i++) {
-if ((game.World.Signature[i] & QUERY$4) === QUERY$4) {
-update$2(game, i);
+if ((game.World.Signature[i] & QUERY$9) === QUERY$9) {
+update$7(game, i);
 }
 }
 }
-function update$2(game, entity) {
-game.World.Transform[entity];
+function update$7(game, entity) {
 let children = game.World.Children[entity];
 let control = game.World.ControlXr[entity];
 if (control.Kind === 1 /* Left */) {
@@ -1931,18 +2205,88 @@ hand_transform.Dirty = true;
 }
 }
 
-const QUERY$3 = 32 /* Transform */ | 4 /* ControlXr */;
+const QUERY$8 = 512 /* Transform */ | 8 /* ControlPlayer */;
+function sys_control_player(game, delta) {
+if (!game.XrFrame) {
+return;
+}
+for (let i = 0; i < game.World.Signature.length; i++) {
+if ((game.World.Signature[i] & QUERY$8) === QUERY$8) {
+update$6(game, i);
+}
+}
+}
+function update$6(game, entity) {
+let transform = game.World.Transform[entity];
+let children = game.World.Children[entity];
+let control = game.World.ControlPlayer[entity];
+if (control.Kind === 0 /* Motion */) {
+let move = game.World.Move[entity];
+let bob_entity = children.Children[0];
+let bob_transform = game.World.Transform[bob_entity];
+let bob_children = game.World.Children[bob_entity];
+let head_entity = bob_children.Children[1];
+let head_transform = game.World.Transform[head_entity];
+
+let left = game.XrInputs["left"];
+if (left === null || left === void 0 ? void 0 : left.gamepad) {
+let axis_strafe = -left.gamepad.axes[2];
+if (axis_strafe) {
+let direction = [axis_strafe, 0, 0];
+transform_direction(direction, direction, head_transform.World);
+direction[1] = 0;
+add(move.Direction, move.Direction, direction);
+}
+let axis_forward = -left.gamepad.axes[3];
+if (axis_forward) {
+let direction = [0, 0, axis_forward];
+transform_direction(direction, direction, head_transform.World);
+direction[1] = 0;
+add(move.Direction, move.Direction, direction);
+}
+}
+let right = game.XrInputs["right"];
+if (right === null || right === void 0 ? void 0 : right.gamepad) {
+let axis_strafe = -right.gamepad.axes[2];
+if (axis_strafe) {
+let direction = [axis_strafe, 0, 0];
+transform_direction(direction, direction, head_transform.World);
+direction[1] = 0;
+add(move.Direction, move.Direction, direction);
+}
+let axis_forward = -right.gamepad.axes[3];
+if (axis_forward) {
+let direction = [0, 0, axis_forward];
+transform_direction(direction, direction, head_transform.World);
+direction[1] = 0;
+add(move.Direction, move.Direction, direction);
+}
+}
+
+if (length(move.Direction) > 0) {
+let bobbing_amplitude = 0.03;
+let bobbing_frequency = 5;
+let bobbing = (Math.sin(bobbing_frequency * transform.Translation[0]) +
+Math.sin(bobbing_frequency * transform.Translation[2])) *
+bobbing_amplitude;
+bob_transform.Translation[1] = bobbing;
+bob_transform.Dirty = true;
+}
+}
+}
+
+const QUERY$7 = 512 /* Transform */ | 16 /* ControlXr */;
 function sys_control_pose(game, delta) {
 if (!game.XrFrame) {
 return;
 }
 for (let i = 0; i < game.World.Signature.length; i++) {
-if ((game.World.Signature[i] & QUERY$3) === QUERY$3) {
-update$1(game, i);
+if ((game.World.Signature[i] & QUERY$7) === QUERY$7) {
+update$5(game, i);
 }
 }
 }
-function update$1(game, entity) {
+function update$5(game, entity) {
 let transform = game.World.Transform[entity];
 let control = game.World.ControlXr[entity];
 if (control.Kind === 0 /* Head */) {
@@ -1978,19 +2322,19 @@ return;
 /**
 * @module systems/sys_light
 */
-const QUERY$2 = 32 /* Transform */ | 8 /* Light */;
+const QUERY$6 = 512 /* Transform */ | 32 /* Light */;
 function sys_light(game, delta) {
 game.LightPositions.fill(0);
 game.LightDetails.fill(0);
 let counter = 0;
 for (let i = 0; i < game.World.Signature.length; i++) {
-if ((game.World.Signature[i] & QUERY$2) === QUERY$2) {
-update(game, i, counter++);
+if ((game.World.Signature[i] & QUERY$6) === QUERY$6) {
+update$4(game, i, counter++);
 }
 }
 }
 let world_pos = [0, 0, 0];
-function update(game, entity, idx) {
+function update$4(game, entity, idx) {
 let light = game.World.Light[entity];
 let transform = game.World.Transform[entity];
 get_translation(world_pos, transform.World);
@@ -2009,7 +2353,185 @@ game.LightDetails[4 * idx + 2] = light.Color[2];
 game.LightDetails[4 * idx + 3] = light.Intensity;
 }
 
-const QUERY$1 = 32 /* Transform */ | 16 /* Render */;
+/**
+* @module systems/sys_move
+*/
+const QUERY$5 = 512 /* Transform */ | 64 /* Move */;
+const NO_ROTATION = [0, 0, 0, 1];
+function sys_move(game, delta) {
+for (let i = 0; i < game.World.Signature.length; i++) {
+if ((game.World.Signature[i] & QUERY$5) === QUERY$5) {
+update$3(game, i, delta);
+}
+}
+}
+function update$3(game, entity, delta) {
+let transform = game.World.Transform[entity];
+let move = game.World.Move[entity];
+if (move.Direction[0] !== 0 || move.Direction[1] !== 0 || move.Direction[2] !== 0) {
+
+
+
+let amount = Math.min(1, length(move.Direction));
+
+
+transform_direction(move.Direction, move.Direction, transform.World);
+if (transform.Parent !== undefined) {
+let parent = game.World.Transform[transform.Parent];
+transform_direction(move.Direction, move.Direction, parent.Self);
+}
+
+
+normalize(move.Direction, move.Direction);
+
+scale(move.Direction, move.Direction, amount * move.MoveSpeed * delta);
+add(transform.Translation, transform.Translation, move.Direction);
+transform.Dirty = true;
+set$1(move.Direction, 0, 0, 0);
+}
+
+if (move.LocalRotation[3] !== 1) {
+let t = Math.min(1, (move.RotationSpeed / Math.PI) * delta);
+slerp(move.LocalRotation, NO_ROTATION, move.LocalRotation, t);
+
+multiply(transform.Rotation, move.LocalRotation, transform.Rotation);
+transform.Dirty = true;
+set(move.LocalRotation, 0, 0, 0, 1);
+}
+
+if (move.SelfRotation[3] !== 1) {
+let t = Math.min(1, (move.RotationSpeed / Math.PI) * delta);
+slerp(move.SelfRotation, NO_ROTATION, move.SelfRotation, t);
+
+multiply(transform.Rotation, transform.Rotation, move.SelfRotation);
+transform.Dirty = true;
+set(move.SelfRotation, 0, 0, 0, 1);
+}
+}
+
+/**
+* @module systems/sys_physics_integrate
+*/
+const QUERY$4 = 512 /* Transform */ | 256 /* RigidBody */;
+const GRAVITY = -9.81;
+function sys_physics_integrate(game, delta) {
+for (let i = 0; i < game.World.Signature.length; i++) {
+if ((game.World.Signature[i] & QUERY$4) === QUERY$4) {
+update$2(game, i, delta);
+}
+}
+}
+function update$2(game, entity, delta) {
+let transform = game.World.Transform[entity];
+let rigid_body = game.World.RigidBody[entity];
+if (rigid_body.Kind === 1 /* Dynamic */) {
+copy$1(rigid_body.VelocityIntegrated, rigid_body.VelocityResolved);
+
+scale(rigid_body.Acceleration, rigid_body.Acceleration, delta);
+add(rigid_body.VelocityIntegrated, rigid_body.VelocityIntegrated, rigid_body.Acceleration);
+rigid_body.VelocityIntegrated[1] += GRAVITY * delta;
+
+let vel_delta = [0, 0, 0];
+scale(vel_delta, rigid_body.VelocityIntegrated, delta);
+add(transform.Translation, transform.Translation, vel_delta);
+transform.Dirty = true;
+
+set$1(rigid_body.Acceleration, 0, 0, 0);
+}
+}
+
+/**
+* @module systems/sys_physics_kinematic
+*/
+const QUERY$3 = 512 /* Transform */ | 256 /* RigidBody */;
+function sys_physics_kinematic(game, delta) {
+for (let i = 0; i < game.World.Signature.length; i++) {
+if ((game.World.Signature[i] & QUERY$3) === QUERY$3) {
+update$1(game, i, delta);
+}
+}
+}
+function update$1(game, entity, delta) {
+let transform = game.World.Transform[entity];
+let rigid_body = game.World.RigidBody[entity];
+if (rigid_body.Kind === 2 /* Kinematic */) {
+let current_position = [0, 0, 0];
+get_translation(current_position, transform.World);
+let movement = [0, 0, 0];
+subtract(movement, current_position, rigid_body.LastPosition);
+
+scale(rigid_body.VelocityIntegrated, movement, 1 / delta);
+copy$1(rigid_body.LastPosition, current_position);
+}
+}
+
+/**
+* @module systems/sys_physics_resolve
+*/
+const QUERY$2 = 512 /* Transform */ | 4 /* Collide */ | 256 /* RigidBody */;
+function sys_physics_resolve(game, delta) {
+for (let i = 0; i < game.World.Signature.length; i++) {
+if ((game.World.Signature[i] & QUERY$2) === QUERY$2) {
+update(game, i);
+}
+}
+}
+
+let a = [0, 0, 0];
+function update(game, entity) {
+let transform = game.World.Transform[entity];
+let collide = game.World.Collide[entity];
+let rigid_body = game.World.RigidBody[entity];
+if (rigid_body.Kind === 1 /* Dynamic */) {
+rigid_body.IsAirborne = true;
+let has_collision = false;
+for (let i = 0; i < collide.Collisions.length; i++) {
+let collision = collide.Collisions[i];
+if (game.World.Signature[collision.Other] & 256 /* RigidBody */) {
+has_collision = true;
+
+
+
+add(transform.Translation, transform.Translation, collision.Hit);
+transform.Dirty = true;
+
+
+
+let other_body = game.World.RigidBody[collision.Other];
+switch (other_body.Kind) {
+case 0 /* Static */:
+
+
+
+
+
+
+normalize(a, collision.Hit);
+
+scale(a, a, -2 * dot(rigid_body.VelocityIntegrated, a));
+add(rigid_body.VelocityResolved, rigid_body.VelocityIntegrated, a);
+break;
+case 1 /* Dynamic */:
+case 2 /* Kinematic */:
+copy$1(rigid_body.VelocityResolved, other_body.VelocityIntegrated);
+break;
+}
+
+scale(rigid_body.VelocityResolved, rigid_body.VelocityResolved, rigid_body.Bounciness);
+if (collision.Hit[1] > 0 && rigid_body.VelocityResolved[1] < 1) {
+
+rigid_body.VelocityResolved[1] = 0;
+rigid_body.IsAirborne = false;
+}
+}
+}
+if (!has_collision) {
+copy$1(rigid_body.VelocityResolved, rigid_body.VelocityIntegrated);
+}
+}
+}
+
+const QUERY$1 = 512 /* Transform */ | 128 /* Render */;
 function sys_render_forward(game, delta) {
 let camera_entity = game.Camera;
 let camera = game.World.Camera[camera_entity];
@@ -2097,7 +2619,7 @@ game.ViewportHeight = game.Canvas3D.height = game.Canvas2D.height = window.inner
 }
 }
 
-const QUERY = 32 /* Transform */;
+const QUERY = 512 /* Transform */;
 function sys_transform(game, delta) {
 for (let i = 0; i < game.World.Signature.length; i++) {
 if ((game.World.Signature[i] & QUERY) === QUERY) {
@@ -2110,19 +2632,19 @@ update_transform(game, i, transform);
 }
 function update_transform(game, entity, transform) {
 transform.Dirty = false;
-if (game.XrFrame && game.World.Signature[entity] & 4 /* ControlXr */) ;
+if (game.XrFrame && game.World.Signature[entity] & 16 /* ControlXr */) ;
 else {
 from_rotation_translation_scale(transform.World, transform.Rotation, transform.Translation, transform.Scale);
 }
 if (transform.Parent !== undefined) {
 let parent_transform = game.World.Transform[transform.Parent];
-multiply(transform.World, parent_transform.World, transform.World);
+multiply$1(transform.World, parent_transform.World, transform.World);
 }
 invert(transform.Self, transform.World);
 if (game.World.Signature[entity] & 2 /* Children */) {
 let children = game.World.Children[entity];
 for (let child of children.Children) {
-if (game.World.Signature[child] & 32 /* Transform */) {
+if (game.World.Signature[child] & 512 /* Transform */) {
 let child_transform = game.World.Transform[child];
 child_transform.Parent = entity;
 update_transform(game, child, child_transform);
@@ -2247,9 +2769,13 @@ constructor() {
 super(...arguments);
 this.Camera = [];
 this.Children = [];
+this.Collide = [];
+this.ControlPlayer = [];
 this.ControlXr = [];
 this.Light = [];
+this.Move = [];
 this.Render = [];
+this.RigidBody = [];
 this.Transform = [];
 }
 }
@@ -2303,9 +2829,30 @@ cancelAnimationFrame(this.Running);
 }
 this.Running = 0;
 }
+FrameSetup(delta) {
+super.FrameSetup(delta);
+if (this.XrFrame) {
+this.XrInputs = {};
+for (let input of this.XrFrame.session.inputSources) {
+if (input.gripSpace) {
+this.XrInputs[input.handedness] = input;
+}
+}
+}
+}
 FrameUpdate(delta) {
+
 sys_control_oculus(this);
+sys_control_player(this);
 sys_control_pose(this);
+
+sys_move(this, delta);
+
+sys_physics_integrate(this, delta);
+sys_transform(this);
+sys_physics_kinematic(this, delta);
+sys_collide(this);
+sys_physics_resolve(this);
 sys_transform(this);
 sys_resize(this);
 sys_camera(this);
@@ -2366,7 +2913,7 @@ Children: child_entities,
 */
 function transform(translation = [0, 0, 0], rotation = [0, 0, 0, 1], scale = [1, 1, 1]) {
 return (game, entity) => {
-game.World.Signature[entity] |= 32 /* Transform */;
+game.World.Signature[entity] |= 512 /* Transform */;
 game.World.Transform[entity] = {
 World: create(),
 Self: create(),
@@ -2384,11 +2931,42 @@ children([transform(undefined, [0, 1, 0, 0]), camera_forward_perspective(1, 0.1,
 ];
 }
 
+function control_player(kind) {
+return (game, entity) => {
+game.World.Signature[entity] |= 8 /* ControlPlayer */;
+game.World.ControlPlayer[entity] = {
+Kind: kind,
+};
+};
+}
+
 function control_xr(kind) {
 return (game, entity) => {
-game.World.Signature[entity] |= 4 /* ControlXr */;
+game.World.Signature[entity] |= 16 /* ControlXr */;
 game.World.ControlXr[entity] = {
 Kind: kind,
+};
+};
+}
+
+/**
+* @module components/com_move
+*/
+/**
+* The Move mixin.
+*
+* @param move_speed - Movement speed in units per second.
+* @param rotation_speed - Rotation speed, in radians per second.
+*/
+function move(move_speed, rotation_speed) {
+return (game, entity) => {
+game.World.Signature[entity] |= 64 /* Move */;
+game.World.Move[entity] = {
+MoveSpeed: move_speed,
+RotationSpeed: rotation_speed,
+Direction: [0, 0, 0],
+LocalRotation: [0, 0, 0, 1],
+SelfRotation: [0, 0, 0, 1],
 };
 };
 }
@@ -2413,7 +2991,7 @@ game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.IndexBuffer);
 game.Gl.bindVertexArray(null);
 colored_shaded_vaos.set(mesh, vao);
 }
-game.World.Signature[entity] |= 16 /* Render */;
+game.World.Signature[entity] |= 128 /* Render */;
 game.World.Render[entity] = {
 Kind: 1 /* ColoredShaded */,
 Material: material,
@@ -2430,10 +3008,20 @@ Shininess: shininess,
 
 function blueprint_viewer(game) {
 return [
+control_player(0 /* Motion */),
+move(2, 0),
+children(
+
+[
+transform(undefined, [0, 1, 0, 0]),
 children([
 
 transform(),
 camera_xr(),
+], [
+
+transform(),
+control_xr(0 /* Head */),
 ], [
 
 transform(),
@@ -2451,6 +3039,7 @@ transform(),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshHand, [1, 1, 0.3, 1], 0, [1, 1, 1, 1], GL_CW),
 ]),
 ]),
+]),
 ];
 }
 
@@ -2459,7 +3048,7 @@ render_colored_shaded(game.MaterialColoredGouraud, game.MeshHand, [1, 1, 0.3, 1]
 */
 function light_directional(color = [1, 1, 1], range = 1) {
 return (game, entity) => {
-game.World.Signature[entity] |= 8 /* Light */;
+game.World.Signature[entity] |= 32 /* Light */;
 game.World.Light[entity] = {
 Kind: 1 /* Directional */,
 Color: color,
@@ -2476,7 +3065,7 @@ game.Gl.clearColor(0.9, 0.9, 0.9, 1);
 
 instantiate(game, [...blueprint_camera(), transform([1, 2, 5], [0, 1, 0, 0])]);
 
-instantiate(game, [...blueprint_viewer(game), transform([1, 2, 5])]);
+instantiate(game, [...blueprint_viewer(game), transform([1, 2, 5], [0, 1, 0, 0])]);
 
 instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
 
