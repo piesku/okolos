@@ -17,7 +17,7 @@ export function scene_stage(game: Game) {
     instantiate(game, [...blueprint_camera(game), transform([1, 2, 5], [0, 1, 0, 0])]);
 
     // VR Camera.
-    instantiate(game, [...blueprint_viewer(game), transform([1, 2, 5])]);
+    instantiate(game, [...blueprint_viewer(game), transform([1, 2, 5], [0, 1, 0, 0])]);
 
     // Light.
     instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);

@@ -14,13 +14,6 @@ export function sys_control_oculus(game: Game, delta: number) {
         return;
     }
 
-    game.XrInputs = {};
-    for (let input of game.XrFrame.session.inputSources) {
-        if (input.gripSpace) {
-            game.XrInputs[input.handedness] = input;
-        }
-    }
-
     for (let i = 0; i < game.World.Signature.length; i++) {
         if ((game.World.Signature[i] & QUERY) === QUERY) {
             update(game, i);
@@ -29,7 +22,6 @@ export function sys_control_oculus(game: Game, delta: number) {
 }
 
 function update(game: Game, entity: Entity) {
-    let transform = game.World.Transform[entity];
     let children = game.World.Children[entity];
     let control = game.World.ControlXr[entity];
 
