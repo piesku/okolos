@@ -1,18 +1,18 @@
-import {Game3D} from "../common/game.js";
-import {Entity} from "../common/world.js";
-import {mat_forward_colored_gouraud} from "../materials/mat_forward_colored_gouraud.js";
-import {mesh_cube} from "../meshes/cube.js";
-import {mesh_hand} from "../meshes/hand.js";
-import {sys_camera} from "./systems/sys_camera.js";
-import {sys_control_oculus} from "./systems/sys_control_oculus.js";
-import {sys_control_pose} from "./systems/sys_control_pose.js";
-import {sys_light} from "./systems/sys_light.js";
-import {sys_render_forward} from "./systems/sys_render_forward.js";
-import {sys_resize} from "./systems/sys_resize.js";
-import {sys_transform} from "./systems/sys_transform.js";
-import {sys_ui} from "./systems/sys_ui.js";
-import {World} from "./world.js";
-import {xr_init} from "./xr.js";
+import { Game3D } from "../common/game.js";
+import { Entity } from "../common/world.js";
+import { mat_forward_colored_gouraud } from "../materials/mat_forward_colored_gouraud.js";
+import { mesh_cube } from "../meshes/cube.js";
+import { mesh_hand } from "../meshes/hand.js";
+import { sys_camera } from "./systems/sys_camera.js";
+import { sys_control_oculus } from "./systems/sys_control_oculus.js";
+import { sys_control_pose } from "./systems/sys_control_pose.js";
+import { sys_light } from "./systems/sys_light.js";
+import { sys_render_forward } from "./systems/sys_render_forward.js";
+import { sys_resize } from "./systems/sys_resize.js";
+import { sys_transform } from "./systems/sys_transform.js";
+import { sys_ui } from "./systems/sys_ui.js";
+import { World } from "./world.js";
+import { xr_init } from "./xr.js";
 
 export class Game extends Game3D {
     World = new World();
@@ -87,4 +87,10 @@ export class Game extends Game3D {
         sys_render_forward(this, delta);
         sys_ui(this, delta);
     }
+}
+
+export const enum Layer {
+    None = 0,
+    Terrain = 1,
+    Physics = 2,
 }
