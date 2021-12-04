@@ -117,3 +117,24 @@ export interface PostprocessLayout {
     VertexPosition: GLint;
     VertexTexcoord: GLint;
 }
+
+export interface SingleColorLayout {
+    // Uniforms
+    Pv: WebGLUniformLocation;
+    World: WebGLUniformLocation;
+
+    // Attributes
+    VertexPosition: GLint;
+}
+
+export interface InstancedLayout {
+    InstanceColumn1: GLint;
+    InstanceColumn2: GLint;
+    InstanceColumn3: GLint;
+    InstanceColumn4: GLint;
+}
+
+export interface FogLayout {
+    Eye: WebGLUniformLocation;
+    FogColor: WebGLUniformLocation;
+}
