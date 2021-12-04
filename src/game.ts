@@ -41,6 +41,8 @@ export class Game extends Game3D {
     LightPositions = new Float32Array(4 * 8);
     LightDetails = new Float32Array(4 * 8);
 
+    ClearColor = [1, 1, 1, 1.0];
+
     constructor() {
         super();
 

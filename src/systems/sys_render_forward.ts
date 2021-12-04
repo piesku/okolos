@@ -1,13 +1,20 @@
 import {Material} from "../../common/material.js";
 import {
     GL_COLOR_BUFFER_BIT,
+    GL_CULL_FACE,
     GL_DEPTH_BUFFER_BIT,
     GL_FRAMEBUFFER,
     GL_UNSIGNED_SHORT,
 } from "../../common/webgl.js";
-import {ColoredShadedLayout, ForwardShadingLayout} from "../../materials/layout.js";
+import {
+    ColoredShadedLayout,
+    FogLayout,
+    ForwardShadingLayout,
+    InstancedLayout,
+    SingleColorLayout,
+} from "../../materials/layout.js";
 import {CameraEye, CameraForward, CameraKind, CameraXr} from "../components/com_camera.js";
-import {RenderColoredShaded, RenderKind} from "../components/com_render.js";
+import {RenderColoredShaded, RenderInstanced, RenderKind} from "../components/com_render.js";
 import {Transform} from "../components/com_transform.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
@@ -62,6 +69,9 @@ function render(game: Game, eye: CameraEye) {
                     case RenderKind.ColoredShaded:
                         use_colored_shaded(game, render.Material, eye);
                         break;
+                    case RenderKind.Instanced:
+                        use_instanced(game, render.Material, eye);
+                        break;
                 }
             }
 
@@ -74,6 +84,8 @@ function render(game: Game, eye: CameraEye) {
                 case RenderKind.ColoredShaded:
                     draw_colored_shaded(game, transform, render);
                     break;
+                case RenderKind.Instanced:
+                    draw_instanced(game, transform, render);
             }
         }
     }
@@ -99,5 +111,32 @@ function draw_colored_shaded(game: Game, transform: Transform, render: RenderCol
     game.Gl.uniform1f(render.Material.Locations.Shininess, render.Shininess);
     game.Gl.bindVertexArray(render.Vao);
     game.Gl.drawElements(render.Material.Mode, render.Mesh.IndexCount, GL_UNSIGNED_SHORT, 0);
+    game.Gl.bindVertexArray(null);
+}
+
+function use_instanced(
+    game: Game,
+    material: Material<SingleColorLayout & InstancedLayout & FogLayout>,
+    eye: CameraEye
+) {
+    game.Gl.disable(GL_CULL_FACE);
+    game.Gl.useProgram(material.Program);
+    game.Gl.uniformMatrix4fv(material.Locations.Pv, false, eye.Pv);
+    game.Gl.uniform3fv(material.Locations.Eye, eye.Position);
+    game.Gl.uniform4fv(material.Locations.FogColor, game.ClearColor);
+}
+
+function draw_instanced(game: Game, transform: Transform, render: RenderInstanced) {
+    game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+    game.Gl.bindVertexArray(render.Vao);
+
+    let instance_count = Math.floor(render.InstanceCount);
+    game.Gl.drawElementsInstanced(
+        render.Material.Mode,
+        render.Mesh.IndexCount,
+        GL_UNSIGNED_SHORT,
+        0,
+        instance_count
+    );
     game.Gl.bindVertexArray(null);
 }

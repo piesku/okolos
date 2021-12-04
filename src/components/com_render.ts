@@ -624,16 +624,17 @@ export function render_vertices(material: Material<ColoredUnlitLayout>, max: num
 
 export interface RenderInstanced {
     readonly Kind: RenderKind.Instanced;
-    readonly Material: Material<SingleColorLayout & InstancedLayout & FogLayout>;
-    readonly Mesh: Mesh;
-    readonly Vao: WebGLVertexArrayObject;
-    readonly InstanceCount: number;
-    readonly InstanceBuffer: WebGLBuffer;
+    Material: Material<SingleColorLayout & InstancedLayout & FogLayout>;
+    Mesh: Mesh;
+    Vao: WebGLVertexArrayObject;
+    InstanceCount: number;
+    InstanceBuffer: WebGLBuffer;
+    FrontFace: GLenum;
 }
 
 export type InstancedData = Float32Array;
 
-export function render_instanced(mesh: Mesh, offsets: InstancedData) {
+export function render_instanced(mesh: Mesh, offsets: InstancedData, front_face = GL_CW) {
     return (game: Game, entity: Entity) => {
         let material = game.MaterialInstanced;
 
@@ -703,6 +704,7 @@ export function render_instanced(mesh: Mesh, offsets: InstancedData) {
             Vao: vao,
             InstanceCount: offsets.length / 16,
             InstanceBuffer: instance_buffer,
+            FrontFace: front_face,
         };
     };
 }
