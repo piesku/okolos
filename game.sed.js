@@ -2216,6 +2216,14 @@ update$6(game, i);
 }
 }
 }
+let left_climbing = false;
+let left_starting_position = [0, 0, 0];
+let left_current_position = [0, 0, 0];
+let left_offset = [0, 0, 0];
+let right_climbing = false;
+let right_starting_position = [0, 0, 0];
+let right_current_position = [0, 0, 0];
+let right_offset = [0, 0, 0];
 function update$6(game, entity) {
 let transform = game.World.Transform[entity];
 let children = game.World.Children[entity];
@@ -2244,6 +2252,23 @@ transform_direction(direction, direction, head_transform.World);
 direction[1] = 0;
 add(move.Direction, move.Direction, direction);
 }
+let squeeze = left.gamepad.buttons[1];
+if (squeeze && squeeze.value > 0.5) {
+let pose = game.XrFrame.getPose(left.gripSpace, game.XrSpace);
+if (!left_climbing) {
+left_climbing = true;
+get_translation(left_starting_position, pose.transform.matrix);
+}
+else {
+get_translation(left_current_position, pose.transform.matrix);
+subtract(left_offset, left_starting_position, left_current_position);
+add(transform.Translation, transform.Translation, left_offset);
+transform.Dirty = true;
+}
+}
+else if (left_climbing) {
+left_climbing = false;
+}
 }
 let right = game.XrInputs["right"];
 if (right === null || right === void 0 ? void 0 : right.gamepad) {
@@ -2260,6 +2285,23 @@ let direction = [0, 0, axis_forward];
 transform_direction(direction, direction, head_transform.World);
 direction[1] = 0;
 add(move.Direction, move.Direction, direction);
+}
+let squeeze = right.gamepad.buttons[1];
+if (squeeze && squeeze.value > 0.5) {
+let pose = game.XrFrame.getPose(right.gripSpace, game.XrSpace);
+if (!right_climbing) {
+right_climbing = true;
+get_translation(right_starting_position, pose.transform.matrix);
+}
+else {
+get_translation(right_current_position, pose.transform.matrix);
+subtract(right_offset, right_starting_position, right_current_position);
+add(transform.Translation, transform.Translation, right_offset);
+transform.Dirty = true;
+}
+}
+else if (right_climbing) {
+right_climbing = false;
 }
 }
 
@@ -2842,9 +2884,9 @@ this.XrInputs[input.handedness] = input;
 }
 FrameUpdate(delta) {
 
+sys_control_pose(this);
 sys_control_oculus(this);
 sys_control_player(this);
-sys_control_pose(this);
 
 sys_move(this, delta);
 
