@@ -1,6 +1,6 @@
 import {get_translation} from "../../common/mat4.js";
 import {Vec3} from "../../common/math.js";
-import {add, length, subtract, transform_direction} from "../../common/vec3.js";
+import {add, copy, length, subtract, transform_direction} from "../../common/vec3.js";
 import {Entity} from "../../common/world.js";
 import {ControlPlayerKind} from "../components/com_control_player.js";
 import {Game} from "../game.js";
@@ -21,12 +21,12 @@ export function sys_control_player(game: Game, delta: number) {
 }
 
 let left_climbing = false;
-let left_starting_position: Vec3 = [0, 0, 0];
+let left_last_position: Vec3 = [0, 0, 0];
 let left_current_position: Vec3 = [0, 0, 0];
 let left_offset: Vec3 = [0, 0, 0];
 
 let right_climbing = false;
-let right_starting_position: Vec3 = [0, 0, 0];
+let right_last_position: Vec3 = [0, 0, 0];
 let right_current_position: Vec3 = [0, 0, 0];
 let right_offset: Vec3 = [0, 0, 0];
 
@@ -69,10 +69,11 @@ function update(game: Game, entity: Entity) {
 
                 if (!left_climbing) {
                     left_climbing = true;
-                    get_translation(left_starting_position, pose.transform.matrix);
+                    get_translation(left_last_position, pose.transform.matrix);
                 } else {
                     get_translation(left_current_position, pose.transform.matrix);
-                    subtract(left_offset, left_starting_position, left_current_position);
+                    subtract(left_offset, left_last_position, left_current_position);
+                    copy(left_last_position, left_current_position);
 
                     add(transform.Translation, transform.Translation, left_offset);
                     transform.Dirty = true;
@@ -106,10 +107,11 @@ function update(game: Game, entity: Entity) {
 
                 if (!right_climbing) {
                     right_climbing = true;
-                    get_translation(right_starting_position, pose.transform.matrix);
+                    get_translation(right_last_position, pose.transform.matrix);
                 } else {
                     get_translation(right_current_position, pose.transform.matrix);
-                    subtract(right_offset, right_starting_position, right_current_position);
+                    subtract(right_offset, right_last_position, right_current_position);
+                    copy(right_last_position, right_current_position);
 
                     add(transform.Translation, transform.Translation, right_offset);
                     transform.Dirty = true;
