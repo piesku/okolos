@@ -18,9 +18,12 @@ import {Entity} from "../../common/world.js";
 import {
     ColoredShadedLayout,
     ColoredUnlitLayout,
+    FogLayout,
     ForwardShadingLayout,
+    InstancedLayout,
     MappedShadedLayout,
     ShadowMappingLayout,
+    SingleColorLayout,
     TexturedShadedLayout,
     TexturedUnlitLayout,
 } from "../../materials/layout.js";
@@ -35,7 +38,8 @@ export type Render =
     | RenderTexturedUnlit
     | RenderTexturedShaded
     | RenderMappedShaded
-    | RenderVertices;
+    | RenderVertices
+    | RenderInstanced;
 
 export const enum RenderKind {
     ColoredUnlit,
@@ -46,6 +50,7 @@ export const enum RenderKind {
     TexturedShaded,
     MappedShaded,
     Vertices,
+    Instanced,
 }
 
 export const enum RenderPhase {
@@ -613,6 +618,91 @@ export function render_vertices(material: Material<ColoredUnlitLayout>, max: num
             VertexBuffer: vertex_buf,
             IndexCount: 0,
             Color: color,
+        };
+    };
+}
+
+export interface RenderInstanced {
+    readonly Kind: RenderKind.Instanced;
+    readonly Material: Material<SingleColorLayout & InstancedLayout & FogLayout>;
+    readonly Mesh: Mesh;
+    readonly Vao: WebGLVertexArrayObject;
+    readonly InstanceCount: number;
+    readonly InstanceBuffer: WebGLBuffer;
+}
+
+export type InstancedData = Float32Array;
+
+export function render_instanced(mesh: Mesh, offsets: InstancedData) {
+    return (game: Game, entity: Entity) => {
+        let material = game.MaterialInstanced;
+
+        let vao = game.Gl.createVertexArray()!;
+        game.Gl.bindVertexArray(vao);
+
+        game.Gl.bindBuffer(GL_ARRAY_BUFFER, mesh.VertexBuffer);
+        game.Gl.enableVertexAttribArray(material.Locations.VertexPosition);
+        game.Gl.vertexAttribPointer(material.Locations.VertexPosition, 3, GL_FLOAT, false, 0, 0);
+
+        let instance_buffer = game.Gl.createBuffer()!;
+        game.Gl.bindBuffer(GL_ARRAY_BUFFER, instance_buffer);
+        game.Gl.bufferData(GL_ARRAY_BUFFER, offsets, GL_STATIC_DRAW);
+
+        game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn1);
+        game.Gl.vertexAttribPointer(
+            material.Locations.InstanceColumn1,
+            3,
+            GL_FLOAT,
+            false,
+            4 * 16,
+            0
+        );
+        game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn1, 1);
+
+        game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn2);
+        game.Gl.vertexAttribPointer(
+            material.Locations.InstanceColumn2,
+            3,
+            GL_FLOAT,
+            false,
+            4 * 16,
+            4 * 4
+        );
+        game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn2, 1);
+
+        game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn3);
+        game.Gl.vertexAttribPointer(
+            material.Locations.InstanceColumn3,
+            3,
+            GL_FLOAT,
+            false,
+            4 * 16,
+            4 * 8
+        );
+        game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn3, 1);
+
+        game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn4);
+        game.Gl.vertexAttribPointer(
+            material.Locations.InstanceColumn4,
+            3,
+            GL_FLOAT,
+            false,
+            4 * 16,
+            4 * 12
+        );
+        game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn4, 1);
+
+        game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.IndexBuffer);
+
+        game.Gl.bindVertexArray(null);
+        game.World.Signature[entity] |= Has.Render;
+        game.World.Render[entity] = {
+            Kind: RenderKind.Instanced,
+            Material: material,
+            Mesh: mesh,
+            Vao: vao,
+            InstanceCount: offsets.length / 16,
+            InstanceBuffer: instance_buffer,
         };
     };
 }
