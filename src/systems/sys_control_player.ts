@@ -1,5 +1,6 @@
+import {get_translation} from "../../common/mat4.js";
 import {Vec3} from "../../common/math.js";
-import {add, length, transform_direction} from "../../common/vec3.js";
+import {add, length, subtract, transform_direction} from "../../common/vec3.js";
 import {Entity} from "../../common/world.js";
 import {ControlPlayerKind} from "../components/com_control_player.js";
 import {Game} from "../game.js";
@@ -18,6 +19,16 @@ export function sys_control_player(game: Game, delta: number) {
         }
     }
 }
+
+let left_climbing = false;
+let left_starting_position: Vec3 = [0, 0, 0];
+let left_current_position: Vec3 = [0, 0, 0];
+let left_offset: Vec3 = [0, 0, 0];
+
+let right_climbing = false;
+let right_starting_position: Vec3 = [0, 0, 0];
+let right_current_position: Vec3 = [0, 0, 0];
+let right_offset: Vec3 = [0, 0, 0];
 
 function update(game: Game, entity: Entity) {
     let transform = game.World.Transform[entity];
@@ -43,6 +54,7 @@ function update(game: Game, entity: Entity) {
                 direction[1] = 0;
                 add(move.Direction, move.Direction, direction);
             }
+
             let axis_forward = -left.gamepad.axes[3];
             if (axis_forward) {
                 let direction: Vec3 = [0, 0, axis_forward];
@@ -50,7 +62,26 @@ function update(game: Game, entity: Entity) {
                 direction[1] = 0;
                 add(move.Direction, move.Direction, direction);
             }
+
+            let squeeze = left.gamepad.buttons[1];
+            if (squeeze && squeeze.value > 0.5) {
+                let pose = game.XrFrame!.getPose(left.gripSpace!, game.XrSpace!);
+
+                if (!left_climbing) {
+                    left_climbing = true;
+                    get_translation(left_starting_position, pose.transform.matrix);
+                } else {
+                    get_translation(left_current_position, pose.transform.matrix);
+                    subtract(left_offset, left_starting_position, left_current_position);
+
+                    add(transform.Translation, transform.Translation, left_offset);
+                    transform.Dirty = true;
+                }
+            } else if (left_climbing) {
+                left_climbing = false;
+            }
         }
+
         let right = game.XrInputs["right"];
         if (right?.gamepad) {
             let axis_strafe = -right.gamepad.axes[2];
@@ -60,12 +91,31 @@ function update(game: Game, entity: Entity) {
                 direction[1] = 0;
                 add(move.Direction, move.Direction, direction);
             }
+
             let axis_forward = -right.gamepad.axes[3];
             if (axis_forward) {
                 let direction: Vec3 = [0, 0, axis_forward];
                 transform_direction(direction, direction, head_transform.World);
                 direction[1] = 0;
                 add(move.Direction, move.Direction, direction);
+            }
+
+            let squeeze = right.gamepad.buttons[1];
+            if (squeeze && squeeze.value > 0.5) {
+                let pose = game.XrFrame!.getPose(right.gripSpace!, game.XrSpace!);
+
+                if (!right_climbing) {
+                    right_climbing = true;
+                    get_translation(right_starting_position, pose.transform.matrix);
+                } else {
+                    get_translation(right_current_position, pose.transform.matrix);
+                    subtract(right_offset, right_starting_position, right_current_position);
+
+                    add(transform.Translation, transform.Translation, right_offset);
+                    transform.Dirty = true;
+                }
+            } else if (right_climbing) {
+                right_climbing = false;
             }
         }
 

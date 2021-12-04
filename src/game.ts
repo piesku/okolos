@@ -98,9 +98,9 @@ export class Game extends Game3D {
 
     override FrameUpdate(delta: number) {
         // User input.
+        sys_control_pose(this, delta);
         sys_control_oculus(this, delta);
         sys_control_player(this, delta);
-        sys_control_pose(this, delta);
 
         // Game logic.
         sys_move(this, delta);
