@@ -2,6 +2,7 @@ import {Game3D} from "../common/game.js";
 import {Vec4} from "../common/math.js";
 import {Entity} from "../common/world.js";
 import {mat_forward_colored_gouraud} from "../materials/mat_forward_colored_gouraud.js";
+import {mat_forward_colored_wireframe} from "../materials/mat_forward_colored_unlit.js";
 import {mat_forward_instanced} from "../materials/mat_forward_instanced.js";
 import {mesh_cube} from "../meshes/cube.js";
 import {mesh_hand} from "../meshes/hand.js";
@@ -10,6 +11,7 @@ import {sys_collide} from "./systems/sys_collide.js";
 import {sys_control_oculus} from "./systems/sys_control_oculus.js";
 import {sys_control_player} from "./systems/sys_control_player.js";
 import {sys_control_pose} from "./systems/sys_control_pose.js";
+import {sys_debug} from "./systems/sys_debug.js";
 import {sys_light} from "./systems/sys_light.js";
 import {sys_move} from "./systems/sys_move.js";
 import {sys_physics_integrate} from "./systems/sys_physics_integrate.js";
@@ -32,12 +34,13 @@ export class Game extends Game3D {
     XrFrame?: XRFrame;
     XrInputs: Record<string, XRInputSource> = {};
 
+    MaterialColoredWireframe = mat_forward_colored_wireframe(this.Gl);
     MaterialColoredGouraud = mat_forward_colored_gouraud(this.Gl);
     MaterialInstanced = mat_forward_instanced(this.Gl);
     MeshCube = mesh_cube(this.Gl);
     MeshHand = mesh_hand(this.Gl);
 
-    Camera?: Entity;
+    Cameras: Array<Entity> = [];
     // The rendering pipeline supports 8 lights.
     LightPositions = new Float32Array(4 * 8);
     LightDetails = new Float32Array(4 * 8);
@@ -118,6 +121,10 @@ export class Game extends Game3D {
         sys_collide(this, delta);
         sys_physics_resolve(this, delta);
         sys_transform(this, delta);
+
+        if (true) {
+            sys_debug(this, delta);
+        }
 
         sys_resize(this, delta);
         sys_camera(this, delta);

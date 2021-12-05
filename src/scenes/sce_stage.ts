@@ -1,18 +1,21 @@
 import {instantiate} from "../../common/game.js";
 import {from_rotation_translation_scale} from "../../common/mat4.js";
 import {from_euler} from "../../common/quat.js";
-import {float} from "../../common/random.js";
+import {float, set_seed} from "../../common/random.js";
 import {blueprint_camera} from "../blueprints/blu_camera.js";
 import {blueprint_viewer} from "../blueprints/blu_viewer.js";
+import {collide} from "../components/com_collide.js";
 import {light_directional} from "../components/com_light.js";
-import {render_instanced} from "../components/com_render.js";
+import {render_colored_shaded, render_instanced} from "../components/com_render.js";
 import {transform} from "../components/com_transform.js";
-import {Game} from "../game.js";
+import {Game, Layer} from "../game.js";
 import {World} from "../world.js";
 
 export function scene_stage(game: Game) {
+    set_seed(Date.now());
+
     game.World = new World();
-    game.Camera = undefined;
+    game.Cameras = [];
     game.ViewportResized = true;
     game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
 
@@ -25,12 +28,13 @@ export function scene_stage(game: Game) {
     // Light.
     instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
 
-    let box_count = 20000;
+    let rubble_count = 20_000;
+    let floating_count = 50;
     let ground_x = 10;
     let ground_z = 10;
     let ground_size = 10;
 
-    let element_count = box_count + ground_x * ground_z;
+    let element_count = rubble_count + ground_x * ground_z;
     let matrices = new Float32Array(element_count * 16);
     let colors = new Float32Array(element_count * 3);
     let off = 0;
@@ -54,35 +58,19 @@ export function scene_stage(game: Game) {
         }
     }
 
+    // Rubble on the ground.
     for (let i = ground_x * ground_z; i < element_count; i++) {
         let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
-        let r = float();
-        if (r < 0.99) {
-            // Rubble on the ground.
-            from_rotation_translation_scale(
-                view,
-                from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
-                [
-                    float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-                    0,
-                    float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-                ],
-                [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
-            );
-        } else {
-            // Floating boxes.
-            let s = float(1, 5);
-            from_rotation_translation_scale(
-                view,
-                from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
-                [
-                    float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-                    float(s, 15),
-                    float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-                ],
-                [s, s, s]
-            );
-        }
+        from_rotation_translation_scale(
+            view,
+            from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+            [
+                float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+                0,
+                float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+            ],
+            [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
+        );
 
         let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
         color[0] = float(0, 1);
@@ -91,4 +79,27 @@ export function scene_stage(game: Game) {
     }
 
     instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices, colors)]);
+
+    // Floating boxes.
+    for (let i = 0; i < floating_count; i++) {
+        let s = float(5, 10);
+        instantiate(game, [
+            transform(
+                [
+                    float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+                    float(s, 25),
+                    float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+                ],
+                from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+                [s, s, s]
+            ),
+            render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
+                float(0, 1),
+                float(0, 1),
+                float(0, 1),
+                1,
+            ]),
+            collide(false, Layer.Terrain, Layer.None),
+        ]);
+    }
 }

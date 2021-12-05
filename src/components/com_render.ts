@@ -625,6 +625,7 @@ export function render_vertices(material: Material<ColoredUnlitLayout>, max: num
 export interface RenderInstanced {
     readonly Kind: RenderKind.Instanced;
     Material: Material<SingleColorLayout & InstancedLayout & FogLayout>;
+    Phase: RenderPhase;
     Mesh: Mesh;
     Vao: WebGLVertexArrayObject;
     InstanceCount: number;
@@ -713,6 +714,7 @@ export function render_instanced(
         game.World.Render[entity] = {
             Kind: RenderKind.Instanced,
             Material: material,
+            Phase: RenderPhase.Opaque,
             Mesh: mesh,
             Vao: vao,
             InstanceCount: offsets.length / 16,

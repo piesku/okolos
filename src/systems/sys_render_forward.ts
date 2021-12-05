@@ -1,78 +1,77 @@
+/**
+ * @module systems/sys_render_forward
+ */
+import {distance_squared_from_point} from "../../common/mat4.js";
 import {Material} from "../../common/material.js";
 import {
+    GL_ARRAY_BUFFER,
+    GL_BLEND,
     GL_COLOR_BUFFER_BIT,
-    GL_CULL_FACE,
     GL_DEPTH_BUFFER_BIT,
+    GL_FLOAT,
     GL_FRAMEBUFFER,
+    GL_TEXTURE0,
+    GL_TEXTURE1,
+    GL_TEXTURE2,
+    GL_TEXTURE3,
+    GL_TEXTURE_2D,
     GL_UNSIGNED_SHORT,
 } from "../../common/webgl.js";
-import {
-    ColoredShadedLayout,
-    FogLayout,
-    ForwardShadingLayout,
-    InstancedLayout,
-    SingleColorLayout,
-} from "../../materials/layout.js";
-import {CameraEye, CameraForward, CameraKind, CameraXr} from "../components/com_camera.js";
-import {RenderColoredShaded, RenderInstanced, RenderKind} from "../components/com_render.js";
-import {Transform} from "../components/com_transform.js";
+import {Entity} from "../../common/world.js";
+import {CameraEye, CameraKind} from "../components/com_camera.js";
+import {Render, RenderKind, RenderPhase} from "../components/com_render.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
 
 const QUERY = Has.Transform | Has.Render;
 
 export function sys_render_forward(game: Game, delta: number) {
-    let camera_entity = game.Camera!;
-    let camera = game.World.Camera[camera_entity];
-    if (camera.Kind === CameraKind.Xr) {
-        render_vr(game, camera);
-    } else {
-        render_screen(game, camera);
+    for (let camera_entity of game.Cameras) {
+        let camera = game.World.Camera[camera_entity];
+        switch (camera.Kind) {
+            case CameraKind.Forward:
+                game.Gl.bindFramebuffer(GL_FRAMEBUFFER, null);
+                game.Gl.viewport(0, 0, game.ViewportWidth, game.ViewportHeight);
+                game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                render_all(game, camera);
+                break;
+            case CameraKind.Xr:
+                let layer = game.XrFrame!.session.renderState.baseLayer!;
+                game.Gl.bindFramebuffer(GL_FRAMEBUFFER, layer.framebuffer);
+                game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                for (let eye of camera.Eyes) {
+                    let viewport = layer.getViewport(eye.Viewpoint);
+                    game.Gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+                    render_all(game, eye);
+                }
+                break;
+        }
     }
 }
 
-function render_screen(game: Game, camera: CameraForward) {
-    game.Gl.bindFramebuffer(GL_FRAMEBUFFER, null);
-    game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if (game.ViewportResized) {
-        game.Gl.viewport(0, 0, game.ViewportWidth, game.ViewportHeight);
-    }
+function render_all(game: Game, eye: CameraEye, current_target?: WebGLTexture) {
+    // Keep track of the current state to minimize switching.
+    let current_material: Material<unknown> | null = null;
+    let current_front_face: GLenum | null = null;
 
-    render(game, camera);
-}
+    // Transparent objects to be sorted by distance to camera and rendered later.
+    let transparent_entities: Array<Entity> = [];
 
-function render_vr(game: Game, camera: CameraXr) {
-    let layer = game.XrFrame!.session.renderState.baseLayer!;
-    game.Gl.bindFramebuffer(GL_FRAMEBUFFER, layer.framebuffer);
-    game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // First render opaque objects.
+    for (let ent = 0; ent < game.World.Signature.length; ent++) {
+        if ((game.World.Signature[ent] & QUERY) === QUERY) {
+            let render = game.World.Render[ent];
 
-    for (let eye of camera.Eyes) {
-        let viewport = layer.getViewport(eye.Viewpoint);
-        game.Gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-        render(game, eye);
-    }
-}
-
-function render(game: Game, eye: CameraEye) {
-    // Keep track of the current material to minimize switching.
-    let current_material = null;
-    let current_front_face = null;
-
-    for (let i = 0; i < game.World.Signature.length; i++) {
-        if ((game.World.Signature[i] & QUERY) === QUERY) {
-            let transform = game.World.Transform[i];
-            let render = game.World.Render[i];
+            if (render.Phase === RenderPhase.Transparent) {
+                // Store transparent objects in a separate array to render them later.
+                transparent_entities.push(ent);
+                continue;
+            }
 
             if (render.Material !== current_material) {
                 current_material = render.Material;
-                switch (render.Kind) {
-                    case RenderKind.ColoredShaded:
-                        use_colored_shaded(game, render.Material, eye);
-                        break;
-                    case RenderKind.Instanced:
-                        use_instanced(game, render.Material, eye);
-                        break;
-                }
+                use_material(game, render, eye);
             }
 
             if (render.FrontFace !== current_front_face) {
@@ -80,64 +79,225 @@ function render(game: Game, eye: CameraEye) {
                 game.Gl.frontFace(render.FrontFace);
             }
 
-            switch (render.Kind) {
-                case RenderKind.ColoredShaded:
-                    draw_colored_shaded(game, transform, render);
-                    break;
-                case RenderKind.Instanced:
-                    draw_instanced(game, transform, render);
-            }
+            draw_entity(game, ent, current_target);
         }
+    }
+
+    // Sort transparent objects by distance to camera, from back to front, to
+    // enforce overdraw and blend them in the correct order.
+    transparent_entities.sort((a, b) => {
+        let transform_a = game.World.Transform[a];
+        let transform_b = game.World.Transform[b];
+        return (
+            distance_squared_from_point(transform_b.World, eye.Position) -
+            distance_squared_from_point(transform_a.World, eye.Position)
+        );
+    });
+
+    game.Gl.enable(GL_BLEND);
+
+    for (let i = 0; i < transparent_entities.length; i++) {
+        let ent = transparent_entities[i];
+        let render = game.World.Render[ent];
+
+        if (render.Material !== current_material) {
+            current_material = render.Material;
+            use_material(game, render, eye);
+        }
+
+        if (render.FrontFace !== current_front_face) {
+            current_front_face = render.FrontFace;
+            game.Gl.frontFace(render.FrontFace);
+        }
+
+        draw_entity(game, ent, current_target);
+    }
+
+    game.Gl.disable(GL_BLEND);
+}
+
+function use_material(game: Game, render: Render, eye: CameraEye) {
+    switch (render.Kind) {
+        case RenderKind.ColoredUnlit:
+            game.Gl.useProgram(render.Material.Program);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+            break;
+        case RenderKind.ColoredShaded:
+            game.Gl.useProgram(render.Material.Program);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+            game.Gl.uniform3fv(render.Material.Locations.Eye, eye.Position);
+            game.Gl.uniform4fv(render.Material.Locations.LightPositions, game.LightPositions);
+            game.Gl.uniform4fv(render.Material.Locations.LightDetails, game.LightDetails);
+            break;
+        case RenderKind.TexturedUnlit:
+            game.Gl.useProgram(render.Material.Program);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+            break;
+        case RenderKind.TexturedShaded:
+            game.Gl.useProgram(render.Material.Program);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+            game.Gl.uniform3fv(render.Material.Locations.Eye, eye.Position);
+            game.Gl.uniform4fv(render.Material.Locations.LightPositions, game.LightPositions);
+            game.Gl.uniform4fv(render.Material.Locations.LightDetails, game.LightDetails);
+            break;
+        case RenderKind.Vertices:
+            game.Gl.useProgram(render.Material.Program);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+            break;
+        case RenderKind.MappedShaded:
+            game.Gl.useProgram(render.Material.Program);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+            game.Gl.uniform3fv(render.Material.Locations.Eye, eye.Position);
+            game.Gl.uniform4fv(render.Material.Locations.LightPositions, game.LightPositions);
+            game.Gl.uniform4fv(render.Material.Locations.LightDetails, game.LightDetails);
+            break;
+        case RenderKind.Instanced:
+            game.Gl.useProgram(render.Material.Program);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+            game.Gl.uniform3fv(render.Material.Locations.Eye, eye.Position);
+            game.Gl.uniform4fv(render.Material.Locations.FogColor, game.ClearColor);
+            game.Gl.uniform1f(render.Material.Locations.FogDistance, game.FogDistance);
+            break;
     }
 }
 
-function use_colored_shaded(
-    game: Game,
-    material: Material<ColoredShadedLayout & ForwardShadingLayout>,
-    eye: CameraEye
-) {
-    game.Gl.useProgram(material.Program);
-    game.Gl.uniformMatrix4fv(material.Locations.Pv, false, eye.Pv);
-    game.Gl.uniform3fv(material.Locations.Eye, eye.Position);
-    game.Gl.uniform4fv(material.Locations.LightPositions, game.LightPositions);
-    game.Gl.uniform4fv(material.Locations.LightDetails, game.LightDetails);
-}
+function draw_entity(game: Game, entity: Entity, current_target?: WebGLTexture) {
+    let transform = game.World.Transform[entity];
+    let render = game.World.Render[entity];
 
-function draw_colored_shaded(game: Game, transform: Transform, render: RenderColoredShaded) {
-    game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
-    game.Gl.uniformMatrix4fv(render.Material.Locations.Self, false, transform.Self);
-    game.Gl.uniform4fv(render.Material.Locations.DiffuseColor, render.DiffuseColor);
-    game.Gl.uniform4fv(render.Material.Locations.SpecularColor, render.SpecularColor);
-    game.Gl.uniform1f(render.Material.Locations.Shininess, render.Shininess);
-    game.Gl.bindVertexArray(render.Vao);
-    game.Gl.drawElements(render.Material.Mode, render.Mesh.IndexCount, GL_UNSIGNED_SHORT, 0);
-    game.Gl.bindVertexArray(null);
-}
+    switch (render.Kind) {
+        case RenderKind.ColoredUnlit:
+            game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+            game.Gl.uniform4fv(render.Material.Locations.Color, render.Color);
+            game.Gl.bindVertexArray(render.Vao);
+            game.Gl.drawElements(
+                render.Material.Mode,
+                render.Mesh.IndexCount,
+                GL_UNSIGNED_SHORT,
+                0
+            );
+            game.Gl.bindVertexArray(null);
 
-function use_instanced(
-    game: Game,
-    material: Material<SingleColorLayout & InstancedLayout & FogLayout>,
-    eye: CameraEye
-) {
-    game.Gl.disable(GL_CULL_FACE);
-    game.Gl.useProgram(material.Program);
-    game.Gl.uniformMatrix4fv(material.Locations.Pv, false, eye.Pv);
-    game.Gl.uniform3fv(material.Locations.Eye, eye.Position);
-    game.Gl.uniform4fv(material.Locations.FogColor, game.ClearColor);
-    game.Gl.uniform1f(material.Locations.FogDistance, game.FogDistance);
-}
+            break;
+        case RenderKind.ColoredShaded:
+            game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Self, false, transform.Self);
+            game.Gl.uniform4fv(render.Material.Locations.DiffuseColor, render.DiffuseColor);
+            game.Gl.uniform4fv(render.Material.Locations.SpecularColor, render.SpecularColor);
+            game.Gl.uniform1f(render.Material.Locations.Shininess, render.Shininess);
+            game.Gl.bindVertexArray(render.Vao);
+            game.Gl.drawElements(
+                render.Material.Mode,
+                render.Mesh.IndexCount,
+                GL_UNSIGNED_SHORT,
+                0
+            );
+            game.Gl.bindVertexArray(null);
+            break;
+        case RenderKind.TexturedUnlit:
+            if (render.Texture === current_target) {
+                // Prevent feedback loop between the active render target
+                // and the texture being rendered.
+                break;
+            }
 
-function draw_instanced(game: Game, transform: Transform, render: RenderInstanced) {
-    game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
-    game.Gl.bindVertexArray(render.Vao);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+            game.Gl.uniform4fv(render.Material.Locations.Color, render.Color);
 
-    let instance_count = Math.floor(render.InstanceCount);
-    game.Gl.drawElementsInstanced(
-        render.Material.Mode,
-        render.Mesh.IndexCount,
-        GL_UNSIGNED_SHORT,
-        0,
-        instance_count
-    );
-    game.Gl.bindVertexArray(null);
+            game.Gl.activeTexture(GL_TEXTURE0);
+            game.Gl.bindTexture(GL_TEXTURE_2D, render.Texture);
+            game.Gl.uniform1i(render.Material.Locations.TextureMap, 0);
+
+            game.Gl.bindVertexArray(render.Vao);
+            game.Gl.drawElements(
+                render.Material.Mode,
+                render.Mesh.IndexCount,
+                GL_UNSIGNED_SHORT,
+                0
+            );
+            game.Gl.bindVertexArray(null);
+            break;
+        case RenderKind.TexturedShaded:
+            if (render.Texture === current_target) {
+                // Prevent feedback loop between the active render target
+                // and the texture being rendered.
+                break;
+            }
+
+            game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Self, false, transform.Self);
+            game.Gl.uniform4fv(render.Material.Locations.DiffuseColor, render.DiffuseColor);
+            game.Gl.uniform4fv(render.Material.Locations.SpecularColor, render.SpecularColor);
+            game.Gl.uniform1f(render.Material.Locations.Shininess, render.Shininess);
+
+            game.Gl.activeTexture(GL_TEXTURE0);
+            game.Gl.bindTexture(GL_TEXTURE_2D, render.Texture);
+            game.Gl.uniform1i(render.Material.Locations.DiffuseMap, 0);
+
+            game.Gl.bindVertexArray(render.Vao);
+            game.Gl.drawElements(
+                render.Material.Mode,
+                render.Mesh.IndexCount,
+                GL_UNSIGNED_SHORT,
+                0
+            );
+            game.Gl.bindVertexArray(null);
+            break;
+        case RenderKind.Vertices:
+            game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+            game.Gl.uniform4fv(render.Material.Locations.Color, render.Color);
+            game.Gl.bindBuffer(GL_ARRAY_BUFFER, render.VertexBuffer);
+            game.Gl.enableVertexAttribArray(render.Material.Locations.VertexPosition);
+            game.Gl.vertexAttribPointer(
+                render.Material.Locations.VertexPosition,
+                3,
+                GL_FLOAT,
+                false,
+                0,
+                0
+            );
+            game.Gl.drawArrays(render.Material.Mode, 0, render.IndexCount);
+            break;
+        case RenderKind.MappedShaded:
+            game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Self, false, transform.Self);
+
+            game.Gl.uniform4fv(render.Material.Locations.DiffuseColor, render.DiffuseColor);
+
+            game.Gl.activeTexture(GL_TEXTURE1);
+            game.Gl.bindTexture(GL_TEXTURE_2D, render.DiffuseMap);
+            game.Gl.uniform1i(render.Material.Locations.DiffuseMap, 1);
+
+            game.Gl.activeTexture(GL_TEXTURE2);
+            game.Gl.bindTexture(GL_TEXTURE_2D, render.NormalMap);
+            game.Gl.uniform1i(render.Material.Locations.NormalMap, 2);
+
+            game.Gl.activeTexture(GL_TEXTURE3);
+            game.Gl.bindTexture(GL_TEXTURE_2D, render.RoughnessMap);
+            game.Gl.uniform1i(render.Material.Locations.RoughnessMap, 3);
+
+            game.Gl.bindVertexArray(render.Vao);
+            game.Gl.drawElements(
+                render.Material.Mode,
+                render.Mesh.IndexCount,
+                GL_UNSIGNED_SHORT,
+                0
+            );
+            game.Gl.bindVertexArray(null);
+            break;
+        case RenderKind.Instanced:
+            game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+            game.Gl.bindVertexArray(render.Vao);
+
+            let instance_count = Math.floor(render.InstanceCount);
+            game.Gl.drawElementsInstanced(
+                render.Material.Mode,
+                render.Mesh.IndexCount,
+                GL_UNSIGNED_SHORT,
+                0,
+                instance_count
+            );
+            game.Gl.bindVertexArray(null);
+            break;
+    }
 }

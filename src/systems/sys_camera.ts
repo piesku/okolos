@@ -8,12 +8,13 @@ import {Has} from "../world.js";
 const QUERY = Has.Transform | Has.Camera;
 
 export function sys_camera(game: Game, delta: number) {
-    game.Camera = undefined;
+    game.Cameras = [];
     for (let i = 0; i < game.World.Signature.length; i++) {
         if ((game.World.Signature[i] & QUERY) === QUERY) {
             let camera = game.World.Camera[i];
 
             if (camera.Kind === CameraKind.Xr && game.XrFrame) {
+                game.Cameras.push(i);
                 update_xr(game, i, camera);
 
                 // Support only one camera per scene.
@@ -21,6 +22,7 @@ export function sys_camera(game: Game, delta: number) {
             }
 
             if (camera.Kind === CameraKind.Forward && !game.XrFrame) {
+                game.Cameras.push(i);
                 update_forward(game, i, camera);
 
                 // Support only one camera per scene.
@@ -31,8 +33,6 @@ export function sys_camera(game: Game, delta: number) {
 }
 
 function update_forward(game: Game, entity: Entity, camera: CameraForward) {
-    game.Camera = entity;
-
     if (game.ViewportResized) {
         switch (camera.Projection.Kind) {
             case ProjectionKind.Perspective: {
@@ -50,8 +50,6 @@ function update_forward(game: Game, entity: Entity, camera: CameraForward) {
 }
 
 function update_xr(game: Game, entity: Entity, camera: CameraXr) {
-    game.Camera = entity;
-
     let transform = game.World.Transform[entity];
     let pose = game.XrFrame!.getViewerPose(game.XrSpace);
 
