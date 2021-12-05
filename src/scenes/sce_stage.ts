@@ -25,13 +25,13 @@ export function scene_stage(game: Game) {
     // Light.
     instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
 
-    // ORB
-    let radius = 20; //float(0.5, 0.9);
-    let box_count = 60;
-    let ground_x = 5;
-    let ground_y = 5;
-    let ground_size = 10;
-    let matrices = new Float32Array(box_count * 16);
+    let box_count = 10000;
+    let ground_x = 30;
+    let ground_y = 30;
+    let ground_size = 5;
+    let radius = ground_size * ground_x;
+    let element_count = box_count + ground_x * ground_y;
+    let matrices = new Float32Array(element_count * 16);
     let off = 0;
     for (let x = 0; x < ground_x; x++) {
         for (let y = 0; y < ground_x; y++) {
@@ -48,11 +48,15 @@ export function scene_stage(game: Game) {
         }
     }
 
-    for (let i = ground_x * ground_y; i < box_count; i++) {
+    for (let i = ground_x * ground_y; i < element_count; i++) {
         let offset: Vec3 = [float(-radius, radius), 0, float(-radius, radius)];
         let rotation: Quat = [0, 0, 0, 1]; //from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90));
         let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
-        from_rotation_translation_scale(view, rotation, offset, [1, 1, 1]);
+        from_rotation_translation_scale(view, rotation, offset, [
+            float(0.1, 0.5),
+            float(0.5, 5),
+            float(0.1, 0.5),
+        ]);
     }
 
     instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices)]);
