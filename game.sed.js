@@ -2146,6 +2146,7 @@ return ((value - old_min) / (old_max - old_min)) * (new_max - new_min) + new_min
 }
 
 const EPSILON = 0.000001;
+const DEG_TO_RAD = Math.PI / 180;
 
 function set(out, x, y, z, w) {
 out[0] = x;
@@ -2161,6 +2162,26 @@ out[0] = ax * bw + aw * bx + ay * bz - az * by;
 out[1] = ay * bw + aw * by + az * bx - ax * bz;
 out[2] = az * bw + aw * bz + ax * by - ay * bx;
 out[3] = aw * bw - ax * bx - ay * by - az * bz;
+return out;
+}
+/**
+* Compute a quaternion out of three Euler angles given in degrees. The order of rotation is YXZ.
+* @param out Quaternion to write to.
+* @param x Rotation about the X axis, in degrees.
+* @param y Rotation around the Y axis, in degress.
+* @param z Rotation around the Z axis, in degress.
+*/
+function from_euler(out, x, y, z) {
+let sx = Math.sin((x / 2) * DEG_TO_RAD);
+let cx = Math.cos((x / 2) * DEG_TO_RAD);
+let sy = Math.sin((y / 2) * DEG_TO_RAD);
+let cy = Math.cos((y / 2) * DEG_TO_RAD);
+let sz = Math.sin((z / 2) * DEG_TO_RAD);
+let cz = Math.cos((z / 2) * DEG_TO_RAD);
+out[0] = sx * cy * cz + cx * sy * sz;
+out[1] = cx * sy * cz - sx * cy * sz;
+out[2] = cx * cy * sz - sx * sy * cz;
+out[3] = cx * cy * cz + sx * sy * sz;
 return out;
 }
 /**
@@ -3272,18 +3293,25 @@ color[2] = float(0, 1);
 }
 }
 for (let i = ground_x * ground_z; i < element_count; i++) {
-let offset = [
+let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
+let r = float();
+if (r < 0.99) {
+
+from_rotation_translation_scale(view, from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)), [
 float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
 0,
 float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-];
-let rotation = [0, 0, 0, 1]; //from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90));
-let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
-from_rotation_translation_scale(view, rotation, offset, [
-float(0.1, 0.5),
-float(0.5, 5),
-float(0.1, 0.5),
-]);
+], [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]);
+}
+else {
+
+let s = float(1, 5);
+from_rotation_translation_scale(view, from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)), [
+float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+float(s, 15),
+float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+], [s, s, s]);
+}
 let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
 color[0] = float(0, 1);
 color[1] = float(0, 1);
