@@ -11,7 +11,7 @@ import {Game} from "../game.js";
 export function blueprint_viewer(game: Game) {
     return [
         control_player(ControlPlayerKind.Motion),
-        move(2, 0),
+        move(2, 1),
         children(
             // An intermediate entity for walk bobbing.
             [

@@ -1,5 +1,6 @@
 import {get_translation} from "../../common/mat4.js";
 import {Vec3} from "../../common/math.js";
+import {from_axis, multiply} from "../../common/quat.js";
 import {add, copy, length, subtract, transform_direction} from "../../common/vec3.js";
 import {Entity} from "../../common/world.js";
 import {ControlPlayerKind} from "../components/com_control_player.js";
@@ -19,6 +20,8 @@ export function sys_control_player(game: Game, delta: number) {
         }
     }
 }
+
+const AXIS_Y: Vec3 = [0, 1, 0];
 
 let left_climbing = false;
 let left_last_position: Vec3 = [0, 0, 0];
@@ -85,20 +88,11 @@ function update(game: Game, entity: Entity) {
 
         let right = game.XrInputs["right"];
         if (right?.gamepad) {
-            let axis_strafe = -right.gamepad.axes[2];
-            if (axis_strafe) {
-                let direction: Vec3 = [axis_strafe, 0, 0];
-                transform_direction(direction, direction, head_transform.World);
-                direction[1] = 0;
-                add(move.Direction, move.Direction, direction);
-            }
-
-            let axis_forward = -right.gamepad.axes[3];
-            if (axis_forward) {
-                let direction: Vec3 = [0, 0, axis_forward];
-                transform_direction(direction, direction, head_transform.World);
-                direction[1] = 0;
-                add(move.Direction, move.Direction, direction);
+            let axis_rotate = -right.gamepad.axes[2];
+            if (axis_rotate) {
+                let amount = axis_rotate * Math.PI;
+                let rotation = from_axis([0, 0, 0, 1], AXIS_Y, amount);
+                multiply(move.LocalRotation, move.LocalRotation, rotation);
             }
 
             let squeeze = right.gamepad.buttons[1];
