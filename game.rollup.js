@@ -9,6 +9,7 @@
         let session = await navigator.xr.requestSession("immersive-vr");
         session.updateRenderState({
             baseLayer: new XRWebGLLayer(session, game.Gl),
+            depthFar: game.FogDistance,
         });
         game.XrSpace = await session.requestReferenceSpace("local");
         game.Stop();
@@ -508,6 +509,7 @@
     uniform mat4 world;
     uniform vec3 eye;
     uniform vec4 fog_color;
+    uniform float fog_distance;
 
     in vec4 attr_position;
     in vec4 attr_column1;
@@ -531,7 +533,7 @@
         vert_color = vec4(attr_color, 1.0);
 
         float eye_distance = length(eye - world_position.xyz);
-        float fog_amount = clamp(0.0, 1.0, eye_distance / 10.0);
+        float fog_amount = clamp(0.0, 1.0, eye_distance / fog_distance);
         vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));
     }
 `;
@@ -553,6 +555,7 @@
                 World: gl.getUniformLocation(program, "world"),
                 Eye: gl.getUniformLocation(program, "eye"),
                 FogColor: gl.getUniformLocation(program, "fog_color"),
+                FogDistance: gl.getUniformLocation(program, "fog_distance"),
                 VertexPosition: gl.getAttribLocation(program, "attr_position"),
                 InstanceColumn1: gl.getAttribLocation(program, "attr_column1"),
                 InstanceColumn2: gl.getAttribLocation(program, "attr_column2"),
@@ -2720,6 +2723,7 @@
         game.Gl.uniformMatrix4fv(material.Locations.Pv, false, eye.Pv);
         game.Gl.uniform3fv(material.Locations.Eye, eye.Position);
         game.Gl.uniform4fv(material.Locations.FogColor, game.ClearColor);
+        game.Gl.uniform1f(material.Locations.FogDistance, game.FogDistance);
     }
     function draw_instanced(game, transform, render) {
         game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
@@ -2917,6 +2921,7 @@
             this.LightPositions = new Float32Array(4 * 8);
             this.LightDetails = new Float32Array(4 * 8);
             this.ClearColor = [1, 1, 1, 1.0];
+            this.FogDistance = 50;
             if (navigator.xr) {
                 xr_init(this);
             }
@@ -3240,24 +3245,23 @@
         game.ViewportResized = true;
         game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
         // Camera.
-        instantiate(game, [...blueprint_camera(), transform([1, 2, 5], [0, 1, 0, 0])]);
+        instantiate(game, [...blueprint_camera(), transform([0, 2, 0], [0, 1, 0, 0])]);
         // VR Camera.
-        instantiate(game, [...blueprint_viewer(game), transform([1, 2, 5], [0, 1, 0, 0])]);
+        instantiate(game, [...blueprint_viewer(game), transform([0, 2, 0], [0, 1, 0, 0])]);
         // Light.
         instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
         let box_count = 20000;
         let ground_x = 10;
-        let ground_y = 10;
+        let ground_z = 10;
         let ground_size = 10;
-        let radius = ground_size * ground_x;
-        let element_count = box_count + ground_x * ground_y;
+        let element_count = box_count + ground_x * ground_z;
         let matrices = new Float32Array(element_count * 16);
         let colors = new Float32Array(element_count * 3);
         let off = 0;
         for (let x = 0; x < ground_x; x++) {
-            for (let y = 0; y < ground_x; y++) {
-                let tx = -ground_x / 2 + x * ground_size;
-                let ty = -ground_y / 2 + y * ground_size;
+            for (let z = 0; z < ground_z; z++) {
+                let tx = (x - ground_x / 2 + 0.5) * ground_size;
+                let ty = (z - ground_z / 2 + 0.5) * ground_size;
                 let view = new Float32Array(matrices.buffer, off * 4 * 16, 16);
                 off++;
                 from_rotation_translation_scale(view, [0, 0, 0, 1], [tx, -1, ty], [ground_size, 1, ground_size]);
@@ -3267,8 +3271,12 @@
                 color[2] = float(0, 1);
             }
         }
-        for (let i = ground_x * ground_y; i < element_count; i++) {
-            let offset = [float(-radius, radius), 0, float(-radius, radius)];
+        for (let i = ground_x * ground_z; i < element_count; i++) {
+            let offset = [
+                float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+                0,
+                float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+            ];
             let rotation = [0, 0, 0, 1]; //from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90));
             let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
             from_rotation_translation_scale(view, rotation, offset, [
