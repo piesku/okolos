@@ -138,4 +138,5 @@ export interface InstancedLayout {
 export interface FogLayout {
     Eye: WebGLUniformLocation;
     FogColor: WebGLUniformLocation;
+    FogDistance: WebGLUniformLocation;
 }

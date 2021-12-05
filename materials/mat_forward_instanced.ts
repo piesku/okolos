@@ -7,6 +7,7 @@ let vertex = `#version 300 es\n
     uniform mat4 world;
     uniform vec3 eye;
     uniform vec4 fog_color;
+    uniform float fog_distance;
 
     in vec4 attr_position;
     in vec4 attr_column1;
@@ -30,7 +31,7 @@ let vertex = `#version 300 es\n
         vert_color = vec4(attr_color, 1.0);
 
         float eye_distance = length(eye - world_position.xyz);
-        float fog_amount = clamp(0.0, 1.0, eye_distance / 10.0);
+        float fog_amount = clamp(0.0, 1.0, eye_distance / fog_distance);
         vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));
     }
 `;
@@ -55,7 +56,9 @@ export function mat_forward_instanced(
             Pv: gl.getUniformLocation(program, "pv")!,
             World: gl.getUniformLocation(program, "world")!,
             Eye: gl.getUniformLocation(program, "eye")!,
+
             FogColor: gl.getUniformLocation(program, "fog_color")!,
+            FogDistance: gl.getUniformLocation(program, "fog_distance")!,
 
             VertexPosition: gl.getAttribLocation(program, "attr_position")!,
 

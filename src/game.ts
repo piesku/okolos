@@ -43,6 +43,7 @@ export class Game extends Game3D {
     LightDetails = new Float32Array(4 * 8);
 
     ClearColor: Vec4 = [1, 1, 1, 1.0];
+    FogDistance = 50;
 
     constructor() {
         super();

@@ -124,6 +124,7 @@ function use_instanced(
     game.Gl.uniformMatrix4fv(material.Locations.Pv, false, eye.Pv);
     game.Gl.uniform3fv(material.Locations.Eye, eye.Position);
     game.Gl.uniform4fv(material.Locations.FogColor, game.ClearColor);
+    game.Gl.uniform1f(material.Locations.FogDistance, game.FogDistance);
 }
 
 function draw_instanced(game: Game, transform: Transform, render: RenderInstanced) {

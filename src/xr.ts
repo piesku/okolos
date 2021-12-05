@@ -9,6 +9,7 @@ export async function xr_enter(game: Game) {
     let session = await navigator.xr.requestSession("immersive-vr");
     session.updateRenderState({
         baseLayer: new XRWebGLLayer(session, game.Gl),
+        depthFar: game.FogDistance,
     });
     game.XrSpace = await session.requestReferenceSpace("local");
 
