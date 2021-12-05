@@ -508,24 +508,28 @@ uniform mat4 pv;
 uniform mat4 world;
 uniform vec3 eye;
 uniform vec4 fog_color;
-in vec3 attr_position;
-in vec3 attr_column1;
-in vec3 attr_column2;
-in vec3 attr_column3;
-in vec3 attr_column4;
 
+in vec4 attr_position;
+in vec4 attr_column1;
+in vec4 attr_column2;
+in vec4 attr_column3;
+in vec4 attr_column4;
 in vec3 attr_color;
-
 out vec4 vert_color;
+
 void main() {
-mat3 rotation = mat3(
+mat4 instance = mat4(
 attr_column1,
 attr_column2,
-attr_column3
+attr_column3,
+attr_column4
 );
-vec4 world_position = world * mat4(rotation) * vec4(attr_position + attr_column4, 1.0);
+
+vec4 world_position = world * instance * attr_position;
 gl_Position = pv * world_position;
+
 vert_color = vec4(attr_color, 1.0);
+
 float eye_distance = length(eye - world_position.xyz);
 float fog_amount = clamp(0.0, 1.0, eye_distance / 10.0);
 vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));
@@ -3147,16 +3151,16 @@ let instance_buffer = game.Gl.createBuffer();
 game.Gl.bindBuffer(GL_ARRAY_BUFFER, instance_buffer);
 game.Gl.bufferData(GL_ARRAY_BUFFER, offsets, GL_STATIC_DRAW);
 game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn1);
-game.Gl.vertexAttribPointer(material.Locations.InstanceColumn1, 3, GL_FLOAT, false, 4 * 16, 0);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColumn1, 4, GL_FLOAT, false, 4 * 16, 0);
 game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn1, 1);
 game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn2);
-game.Gl.vertexAttribPointer(material.Locations.InstanceColumn2, 3, GL_FLOAT, false, 4 * 16, 4 * 4);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColumn2, 4, GL_FLOAT, false, 4 * 16, 4 * 4);
 game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn2, 1);
 game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn3);
-game.Gl.vertexAttribPointer(material.Locations.InstanceColumn3, 3, GL_FLOAT, false, 4 * 16, 4 * 8);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColumn3, 4, GL_FLOAT, false, 4 * 16, 4 * 8);
 game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn3, 1);
 game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn4);
-game.Gl.vertexAttribPointer(material.Locations.InstanceColumn4, 3, GL_FLOAT, false, 4 * 16, 4 * 12);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColumn4, 4, GL_FLOAT, false, 4 * 16, 4 * 12);
 game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn4, 1);
 let instance_color_buffer = game.Gl.createBuffer();
 game.Gl.bindBuffer(GL_ARRAY_BUFFER, instance_color_buffer);
@@ -3245,15 +3249,15 @@ let box_count = 20000;
 let ground_x = 10;
 let ground_y = 10;
 let ground_size = 10;
-let radius = ground_size * ground_x * 2;
+let radius = ground_size * ground_x;
 let element_count = box_count + ground_x * ground_y;
 let matrices = new Float32Array(element_count * 16);
 let colors = new Float32Array(element_count * 3);
 let off = 0;
 for (let x = 0; x < ground_x; x++) {
 for (let y = 0; y < ground_x; y++) {
-let tx = -ground_x / 2 + x;
-let ty = -ground_y / 2 + y;
+let tx = -ground_x / 2 + x * ground_size;
+let ty = -ground_y / 2 + y * ground_size;
 let view = new Float32Array(matrices.buffer, off * 4 * 16, 16);
 off++;
 from_rotation_translation_scale(view, [0, 0, 0, 1], [tx, -1, ty], [ground_size, 1, ground_size]);
