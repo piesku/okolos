@@ -2403,11 +2403,11 @@ update$6(game, i);
 const AXIS_Y = [0, 1, 0];
 let left_climbing = false;
 let left_last_position = [0, 0, 0];
-let left_current_position = [0, 0, 0];
+let left_curr_position = [0, 0, 0];
 let left_offset = [0, 0, 0];
 let right_climbing = false;
 let right_last_position = [0, 0, 0];
-let right_current_position = [0, 0, 0];
+let right_curr_position = [0, 0, 0];
 let right_offset = [0, 0, 0];
 function update$6(game, entity) {
 let transform = game.World.Transform[entity];
@@ -2465,16 +2465,23 @@ let right_hand_control = game.World.ControlXr[right_hand_entity];
 
 if (left_hand_entity && (left_hand_control === null || left_hand_control === void 0 ? void 0 : left_hand_control.Squeezed)) {
 let hand_transform = game.World.Transform[left_hand_entity];
+let hand_collide = game.World.Collide[left_hand_entity];
+if (hand_collide.Collisions.length > 0) {
 if (!left_climbing) {
 left_climbing = true;
 get_translation(left_last_position, hand_transform.World);
 }
 else {
-get_translation(left_current_position, hand_transform.World);
-subtract(left_offset, left_last_position, left_current_position);
-copy$1(left_last_position, left_current_position);
+get_translation(left_curr_position, hand_transform.World);
+subtract(left_offset, left_last_position, left_curr_position);
+copy$1(left_last_position, left_curr_position);
+
+left_offset[0] *= -1;
+left_offset[2] *= -1;
+transform_direction(left_offset, left_offset, transform.World);
 add(transform.Translation, transform.Translation, left_offset);
 transform.Dirty = true;
+}
 }
 }
 else if (left_climbing) {
@@ -2483,16 +2490,23 @@ left_climbing = false;
 
 if (right_hand_entity && (right_hand_control === null || right_hand_control === void 0 ? void 0 : right_hand_control.Squeezed)) {
 let hand_transform = game.World.Transform[right_hand_entity];
+let hand_collide = game.World.Collide[right_hand_entity];
+if (hand_collide.Collisions.length > 0) {
 if (!right_climbing) {
 right_climbing = true;
 get_translation(right_last_position, hand_transform.World);
 }
 else {
-get_translation(right_current_position, hand_transform.World);
-subtract(right_offset, right_last_position, right_current_position);
-copy$1(right_last_position, right_current_position);
+get_translation(right_curr_position, hand_transform.World);
+subtract(right_offset, right_last_position, right_curr_position);
+copy$1(right_last_position, right_curr_position);
+
+right_offset[0] *= -1;
+right_offset[2] *= -1;
+transform_direction(right_offset, right_offset, transform.World);
 add(transform.Translation, transform.Translation, right_offset);
 transform.Dirty = true;
+}
 }
 }
 else if (right_climbing) {
@@ -2526,6 +2540,7 @@ let input = game.XrInputs["left"];
 if (input) {
 let pose = game.XrFrame.getPose(input.gripSpace, game.XrSpace);
 if (pose) {
+control.Pose = pose;
 transform.World = pose.transform.matrix;
 transform.Dirty = true;
 }
@@ -2537,6 +2552,7 @@ let input = game.XrInputs["right"];
 if (input) {
 let pose = game.XrFrame.getPose(input.gripSpace, game.XrSpace);
 if (pose) {
+control.Pose = pose;
 transform.World = pose.transform.matrix;
 transform.Dirty = true;
 }
@@ -3499,6 +3515,37 @@ children([transform(undefined, [0, 1, 0, 0]), camera_forward_perspective(1, 0.1,
 ];
 }
 
+/**
+* @module components/com_collide
+*/
+/**
+* Add the Collide component.
+*
+* @param dynamic Dynamic colliders collider with all colliders. Static
+* colliders collide only with dynamic colliders.
+* @param layers Bit field with layers this collider is on.
+* @param mask Bit mask with layers visible to this collider.
+* @param size Size of the collider relative to the entity's transform.
+*/
+function collide(dynamic, layers, mask, size = [1, 1, 1]) {
+return (game, entity) => {
+game.World.Signature[entity] |= 4 /* Collide */;
+game.World.Collide[entity] = {
+EntityId: entity,
+New: true,
+Dynamic: dynamic,
+Layers: layers,
+Mask: mask,
+Size: size,
+Min: [0, 0, 0],
+Max: [0, 0, 0],
+Center: [0, 0, 0],
+Half: [0, 0, 0],
+Collisions: [],
+};
+};
+}
+
 function control_player(kind) {
 return (game, entity) => {
 game.World.Signature[entity] |= 8 /* ControlPlayer */;
@@ -3513,6 +3560,7 @@ return (game, entity) => {
 game.World.Signature[entity] |= 16 /* ControlXr */;
 game.World.ControlXr[entity] = {
 Kind: kind,
+Pose: null,
 Squeezed: false,
 };
 };
@@ -3560,7 +3608,9 @@ control_xr(0 /* Head */),
 
 transform(),
 control_xr(1 /* Left */),
+collide(true, 2 /* Player */, 1 /* Terrain */, [0.1, 0.1, 0.1]),
 children([
+
 transform(undefined, undefined, [-1, 1, 1]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshHand, [1, 1, 0.3, 1], 0, [1, 1, 1, 1], GL_CCW),
 ]),
@@ -3568,44 +3618,15 @@ render_colored_shaded(game.MaterialColoredGouraud, game.MeshHand, [1, 1, 0.3, 1]
 
 transform(),
 control_xr(2 /* Right */),
+collide(true, 2 /* Player */, 1 /* Terrain */, [0.1, 0.1, 0.1]),
 children([
+
 transform(),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshHand, [1, 1, 0.3, 1], 0, [1, 1, 1, 1], GL_CW),
 ]),
 ]),
 ]),
 ];
-}
-
-/**
-* @module components/com_collide
-*/
-/**
-* Add the Collide component.
-*
-* @param dynamic Dynamic colliders collider with all colliders. Static
-* colliders collide only with dynamic colliders.
-* @param layers Bit field with layers this collider is on.
-* @param mask Bit mask with layers visible to this collider.
-* @param size Size of the collider relative to the entity's transform.
-*/
-function collide(dynamic, layers, mask, size = [1, 1, 1]) {
-return (game, entity) => {
-game.World.Signature[entity] |= 4 /* Collide */;
-game.World.Collide[entity] = {
-EntityId: entity,
-New: true,
-Dynamic: dynamic,
-Layers: layers,
-Mask: mask,
-Size: size,
-Min: [0, 0, 0],
-Max: [0, 0, 0],
-Center: [0, 0, 0],
-Half: [0, 0, 0],
-Collisions: [],
-};
-};
 }
 
 /**
@@ -3676,7 +3697,7 @@ let s = float(5, 10);
 instantiate(game, [
 transform([
 float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-float(s, 25),
+float(3, 25),
 float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
 ], from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)), [s, s, s]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
