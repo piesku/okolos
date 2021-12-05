@@ -2245,7 +2245,7 @@
     }
 
     const QUERY$9 = 512 /* Transform */ | 16 /* ControlXr */ | 2 /* Children */;
-    const AXIS_Y = [0, 1, 0];
+    const AXIS_Y$1 = [0, 1, 0];
     function sys_control_oculus(game, delta) {
         if (!game.XrFrame) {
             return;
@@ -2268,7 +2268,7 @@
                     let hand_entity = children.Children[0];
                     let hand_transform = game.World.Transform[hand_entity];
                     hand_transform.Scale[2] = map_range(squeeze.value, 0, 1, 1, 0.5);
-                    from_axis(hand_transform.Rotation, AXIS_Y, -squeeze.value);
+                    from_axis(hand_transform.Rotation, AXIS_Y$1, -squeeze.value);
                     hand_transform.Dirty = true;
                 }
             }
@@ -2282,7 +2282,7 @@
                     let hand_entity = children.Children[0];
                     let hand_transform = game.World.Transform[hand_entity];
                     hand_transform.Scale[2] = map_range(squeeze.value, 0, 1, 1, 0.5);
-                    from_axis(hand_transform.Rotation, AXIS_Y, squeeze.value);
+                    from_axis(hand_transform.Rotation, AXIS_Y$1, squeeze.value);
                     hand_transform.Dirty = true;
                 }
             }
@@ -2300,6 +2300,7 @@
             }
         }
     }
+    const AXIS_Y = [0, 1, 0];
     let left_climbing = false;
     let left_last_position = [0, 0, 0];
     let left_current_position = [0, 0, 0];
@@ -2357,19 +2358,11 @@
             }
             let right = game.XrInputs["right"];
             if (right === null || right === void 0 ? void 0 : right.gamepad) {
-                let axis_strafe = -right.gamepad.axes[2];
-                if (axis_strafe) {
-                    let direction = [axis_strafe, 0, 0];
-                    transform_direction(direction, direction, head_transform.World);
-                    direction[1] = 0;
-                    add(move.Direction, move.Direction, direction);
-                }
-                let axis_forward = -right.gamepad.axes[3];
-                if (axis_forward) {
-                    let direction = [0, 0, axis_forward];
-                    transform_direction(direction, direction, head_transform.World);
-                    direction[1] = 0;
-                    add(move.Direction, move.Direction, direction);
+                let axis_rotate = -right.gamepad.axes[2];
+                if (axis_rotate) {
+                    let amount = axis_rotate * Math.PI;
+                    let rotation = from_axis([0, 0, 0, 1], AXIS_Y, amount);
+                    multiply(move.LocalRotation, move.LocalRotation, rotation);
                 }
                 let squeeze = right.gamepad.buttons[1];
                 if (squeeze && squeeze.value > 0.5) {
@@ -3212,7 +3205,7 @@
     function blueprint_viewer(game) {
         return [
             control_player(0 /* Motion */),
-            move(2, 0),
+            move(2, 1),
             children(
             // An intermediate entity for walk bobbing.
             [
