@@ -33,6 +33,7 @@ function update(game: Game, entity: Entity) {
         if (input) {
             let pose = game.XrFrame!.getPose(input.gripSpace!, game.XrSpace!);
             if (pose) {
+                control.Pose = pose;
                 transform.World = pose.transform.matrix;
                 transform.Dirty = true;
             }
@@ -45,6 +46,7 @@ function update(game: Game, entity: Entity) {
         if (input) {
             let pose = game.XrFrame!.getPose(input.gripSpace!, game.XrSpace!);
             if (pose) {
+                control.Pose = pose;
                 transform.World = pose.transform.matrix;
                 transform.Dirty = true;
             }

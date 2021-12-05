@@ -87,7 +87,7 @@ export function scene_stage(game: Game) {
             transform(
                 [
                     float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-                    float(s, 25),
+                    float(3, 25),
                     float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
                 ],
                 from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),

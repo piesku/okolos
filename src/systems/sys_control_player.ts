@@ -25,12 +25,12 @@ const AXIS_Y: Vec3 = [0, 1, 0];
 
 let left_climbing = false;
 let left_last_position: Vec3 = [0, 0, 0];
-let left_current_position: Vec3 = [0, 0, 0];
+let left_curr_position: Vec3 = [0, 0, 0];
 let left_offset: Vec3 = [0, 0, 0];
 
 let right_climbing = false;
 let right_last_position: Vec3 = [0, 0, 0];
-let right_current_position: Vec3 = [0, 0, 0];
+let right_curr_position: Vec3 = [0, 0, 0];
 let right_offset: Vec3 = [0, 0, 0];
 
 function update(game: Game, entity: Entity) {
@@ -99,17 +99,24 @@ function update(game: Game, entity: Entity) {
         // Climbing with the left hand.
         if (left_hand_entity && left_hand_control?.Squeezed) {
             let hand_transform = game.World.Transform[left_hand_entity];
+            let hand_collide = game.World.Collide[left_hand_entity];
 
-            if (!left_climbing) {
-                left_climbing = true;
-                get_translation(left_last_position, hand_transform.World);
-            } else {
-                get_translation(left_current_position, hand_transform.World);
-                subtract(left_offset, left_last_position, left_current_position);
-                copy(left_last_position, left_current_position);
+            if (hand_collide.Collisions.length > 0) {
+                if (!left_climbing) {
+                    left_climbing = true;
+                    get_translation(left_last_position, hand_transform.World);
+                } else {
+                    get_translation(left_curr_position, hand_transform.World);
+                    subtract(left_offset, left_last_position, left_curr_position);
+                    copy(left_last_position, left_curr_position);
 
-                add(transform.Translation, transform.Translation, left_offset);
-                transform.Dirty = true;
+                    // Fix WebXR's +X and +Z axes.
+                    left_offset[0] *= -1;
+                    left_offset[2] *= -1;
+                    transform_direction(left_offset, left_offset, transform.World);
+                    add(transform.Translation, transform.Translation, left_offset);
+                    transform.Dirty = true;
+                }
             }
         } else if (left_climbing) {
             left_climbing = false;
@@ -118,17 +125,24 @@ function update(game: Game, entity: Entity) {
         // Climbing with the right hand.
         if (right_hand_entity && right_hand_control?.Squeezed) {
             let hand_transform = game.World.Transform[right_hand_entity];
+            let hand_collide = game.World.Collide[right_hand_entity];
 
-            if (!right_climbing) {
-                right_climbing = true;
-                get_translation(right_last_position, hand_transform.World);
-            } else {
-                get_translation(right_current_position, hand_transform.World);
-                subtract(right_offset, right_last_position, right_current_position);
-                copy(right_last_position, right_current_position);
+            if (hand_collide.Collisions.length > 0) {
+                if (!right_climbing) {
+                    right_climbing = true;
+                    get_translation(right_last_position, hand_transform.World);
+                } else {
+                    get_translation(right_curr_position, hand_transform.World);
+                    subtract(right_offset, right_last_position, right_curr_position);
+                    copy(right_last_position, right_curr_position);
 
-                add(transform.Translation, transform.Translation, right_offset);
-                transform.Dirty = true;
+                    // Fix WebXR's +X and +Z axes.
+                    right_offset[0] *= -1;
+                    right_offset[2] *= -1;
+                    transform_direction(right_offset, right_offset, transform.World);
+                    add(transform.Translation, transform.Translation, right_offset);
+                    transform.Dirty = true;
+                }
             }
         } else if (right_climbing) {
             right_climbing = false;
