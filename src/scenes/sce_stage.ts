@@ -25,13 +25,14 @@ export function scene_stage(game: Game) {
     // Light.
     instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
 
-    let box_count = 10000;
-    let ground_x = 30;
-    let ground_y = 30;
-    let ground_size = 5;
-    let radius = ground_size * ground_x;
+    let box_count = 20000;
+    let ground_x = 10;
+    let ground_y = 10;
+    let ground_size = 10;
+    let radius = ground_size * ground_x * 2;
     let element_count = box_count + ground_x * ground_y;
     let matrices = new Float32Array(element_count * 16);
+    let colors = new Float32Array(element_count * 3);
     let off = 0;
     for (let x = 0; x < ground_x; x++) {
         for (let y = 0; y < ground_x; y++) {
@@ -45,6 +46,11 @@ export function scene_stage(game: Game) {
                 [tx, -1, ty],
                 [ground_size, 1, ground_size]
             );
+
+            let color = new Float32Array(colors.buffer, off * 4 * 3, 3);
+            color[0] = float(0, 1);
+            color[1] = float(0, 1);
+            color[2] = float(0, 1);
         }
     }
 
@@ -57,7 +63,12 @@ export function scene_stage(game: Game) {
             float(0.5, 5),
             float(0.1, 0.5),
         ]);
+
+        let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
+        color[0] = float(0, 1);
+        color[1] = float(0, 1);
+        color[2] = float(0, 1);
     }
 
-    instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices)]);
+    instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices, colors)]);
 }

@@ -634,7 +634,12 @@ export interface RenderInstanced {
 
 export type InstancedData = Float32Array;
 
-export function render_instanced(mesh: Mesh, offsets: InstancedData, front_face = GL_CW) {
+export function render_instanced(
+    mesh: Mesh,
+    offsets: InstancedData,
+    colors: InstancedData,
+    front_face = GL_CW
+) {
     return (game: Game, entity: Entity) => {
         let material = game.MaterialInstanced;
 
@@ -692,6 +697,15 @@ export function render_instanced(mesh: Mesh, offsets: InstancedData, front_face 
             4 * 12
         );
         game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn4, 1);
+
+        let instance_color_buffer = game.Gl.createBuffer()!;
+        game.Gl.bindBuffer(GL_ARRAY_BUFFER, instance_color_buffer);
+        game.Gl.bufferData(GL_ARRAY_BUFFER, colors, GL_STATIC_DRAW);
+
+        game.Gl.enableVertexAttribArray(material.Locations.InstanceColor);
+        game.Gl.vertexAttribPointer(material.Locations.InstanceColor, 3, GL_FLOAT, false, 0, 0);
+
+        game.Gl.vertexAttribDivisor(material.Locations.InstanceColor, 1);
 
         game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.IndexBuffer);
 

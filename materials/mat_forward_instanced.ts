@@ -12,6 +12,9 @@ let vertex = `#version 300 es\n
     in vec3 attr_column2;
     in vec3 attr_column3;
     in vec3 attr_column4;
+
+    in vec3 attr_color;
+
     out vec4 vert_color;
     void main() {
         mat3 rotation = mat3(
@@ -21,10 +24,9 @@ let vertex = `#version 300 es\n
         );
         vec4 world_position = world * mat4(rotation) * vec4(attr_position + attr_column4, 1.0);
         gl_Position = pv * world_position;
-        // Ambient light only.
-        vert_color = vec4(0.02, 0.06, 0.04, 1.0);
+        vert_color = vec4(attr_color, 1.0);
         float eye_distance = length(eye - world_position.xyz);
-        float fog_amount = clamp(0.0, 1.0, eye_distance / 15.0);
+        float fog_amount = clamp(0.0, 1.0, eye_distance / 10.0);
         vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));
     }
 `;
@@ -57,6 +59,8 @@ export function mat_forward_instanced(
             InstanceColumn2: gl.getAttribLocation(program, "attr_column2")!,
             InstanceColumn3: gl.getAttribLocation(program, "attr_column3")!,
             InstanceColumn4: gl.getAttribLocation(program, "attr_column4")!,
+
+            InstanceColor: gl.getAttribLocation(program, "attr_color")!,
         },
     };
 }

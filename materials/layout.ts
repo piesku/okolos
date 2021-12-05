@@ -132,6 +132,7 @@ export interface InstancedLayout {
     InstanceColumn2: GLint;
     InstanceColumn3: GLint;
     InstanceColumn4: GLint;
+    InstanceColor: GLint;
 }
 
 export interface FogLayout {
