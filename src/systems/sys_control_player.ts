@@ -44,6 +44,7 @@ function update(game: Game, entity: Entity) {
         let bob_entity = children.Children[0];
         let bob_transform = game.World.Transform[bob_entity];
         let bob_children = game.World.Children[bob_entity];
+
         let head_entity = bob_children.Children[1];
         let head_transform = game.World.Transform[head_entity];
 
@@ -65,54 +66,6 @@ function update(game: Game, entity: Entity) {
                 direction[1] = 0;
                 add(move.Direction, move.Direction, direction);
             }
-
-            let squeeze = left.gamepad.buttons[1];
-            if (squeeze && squeeze.value > 0.5) {
-                let pose = game.XrFrame!.getPose(left.gripSpace!, game.XrSpace!);
-
-                if (!left_climbing) {
-                    left_climbing = true;
-                    get_translation(left_last_position, pose.transform.matrix);
-                } else {
-                    get_translation(left_current_position, pose.transform.matrix);
-                    subtract(left_offset, left_last_position, left_current_position);
-                    copy(left_last_position, left_current_position);
-
-                    add(transform.Translation, transform.Translation, left_offset);
-                    transform.Dirty = true;
-                }
-            } else if (left_climbing) {
-                left_climbing = false;
-            }
-        }
-
-        let right = game.XrInputs["right"];
-        if (right?.gamepad) {
-            let axis_rotate = -right.gamepad.axes[2];
-            if (axis_rotate) {
-                let amount = axis_rotate * Math.PI;
-                let rotation = from_axis([0, 0, 0, 1], AXIS_Y, amount);
-                multiply(move.LocalRotation, move.LocalRotation, rotation);
-            }
-
-            let squeeze = right.gamepad.buttons[1];
-            if (squeeze && squeeze.value > 0.5) {
-                let pose = game.XrFrame!.getPose(right.gripSpace!, game.XrSpace!);
-
-                if (!right_climbing) {
-                    right_climbing = true;
-                    get_translation(right_last_position, pose.transform.matrix);
-                } else {
-                    get_translation(right_current_position, pose.transform.matrix);
-                    subtract(right_offset, right_last_position, right_current_position);
-                    copy(right_last_position, right_current_position);
-
-                    add(transform.Translation, transform.Translation, right_offset);
-                    transform.Dirty = true;
-                }
-            } else if (right_climbing) {
-                right_climbing = false;
-            }
         }
 
         // Bobbing while walking.
@@ -125,6 +78,60 @@ function update(game: Game, entity: Entity) {
                 bobbing_amplitude;
             bob_transform.Translation[1] = bobbing;
             bob_transform.Dirty = true;
+        }
+
+        // Rotating the player.
+        let right = game.XrInputs["right"];
+        if (right?.gamepad) {
+            let axis_rotate = -right.gamepad.axes[2];
+            if (axis_rotate) {
+                let amount = axis_rotate * Math.PI;
+                let rotation = from_axis([0, 0, 0, 1], AXIS_Y, amount);
+                multiply(move.LocalRotation, move.LocalRotation, rotation);
+            }
+        }
+
+        let left_hand_entity = bob_children.Children[2];
+        let left_hand_control = game.World.ControlXr[left_hand_entity];
+        let right_hand_entity = bob_children.Children[3];
+        let right_hand_control = game.World.ControlXr[right_hand_entity];
+
+        // Climbing with the left hand.
+        if (left_hand_entity && left_hand_control?.Squeezed) {
+            let hand_transform = game.World.Transform[left_hand_entity];
+
+            if (!left_climbing) {
+                left_climbing = true;
+                get_translation(left_last_position, hand_transform.World);
+            } else {
+                get_translation(left_current_position, hand_transform.World);
+                subtract(left_offset, left_last_position, left_current_position);
+                copy(left_last_position, left_current_position);
+
+                add(transform.Translation, transform.Translation, left_offset);
+                transform.Dirty = true;
+            }
+        } else if (left_climbing) {
+            left_climbing = false;
+        }
+
+        // Climbing with the right hand.
+        if (right_hand_entity && right_hand_control?.Squeezed) {
+            let hand_transform = game.World.Transform[right_hand_entity];
+
+            if (!right_climbing) {
+                right_climbing = true;
+                get_translation(right_last_position, hand_transform.World);
+            } else {
+                get_translation(right_current_position, hand_transform.World);
+                subtract(right_offset, right_last_position, right_current_position);
+                copy(right_last_position, right_current_position);
+
+                add(transform.Translation, transform.Translation, right_offset);
+                transform.Dirty = true;
+            }
+        } else if (right_climbing) {
+            right_climbing = false;
         }
     }
 }

@@ -6,7 +6,7 @@ import {ControlXrKind} from "../components/com_control_xr.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
 
-const QUERY = Has.Transform | Has.ControlXr | Has.Children;
+const QUERY = Has.Transform | Has.ControlXr;
 const AXIS_Y: Vec3 = [0, 1, 0];
 
 export function sys_control_oculus(game: Game, delta: number) {
@@ -36,6 +36,12 @@ function update(game: Game, entity: Entity) {
                 hand_transform.Scale[2] = map_range(squeeze.value, 0, 1, 1, 0.5);
                 from_axis(hand_transform.Rotation, AXIS_Y, -squeeze.value);
                 hand_transform.Dirty = true;
+
+                if (squeeze.value > 0.5) {
+                    control.Squeezed = true;
+                } else {
+                    control.Squeezed = false;
+                }
             }
         }
     }
@@ -51,6 +57,12 @@ function update(game: Game, entity: Entity) {
                 hand_transform.Scale[2] = map_range(squeeze.value, 0, 1, 1, 0.5);
                 from_axis(hand_transform.Rotation, AXIS_Y, squeeze.value);
                 hand_transform.Dirty = true;
+
+                if (squeeze.value > 0.5) {
+                    control.Squeezed = true;
+                } else {
+                    control.Squeezed = false;
+                }
             }
         }
     }

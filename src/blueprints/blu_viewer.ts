@@ -28,7 +28,7 @@ export function blueprint_viewer(game: Game) {
                         control_xr(ControlXrKind.Head),
                     ],
                     [
-                        // Left hand.
+                        // Left hand (must be Children[2]).
                         transform(),
                         control_xr(ControlXrKind.Left),
                         children([
@@ -44,7 +44,7 @@ export function blueprint_viewer(game: Game) {
                         ]),
                     ],
                     [
-                        // Right hand.
+                        // Right hand (must be Children[3]).
                         transform(),
                         control_xr(ControlXrKind.Right),
                         children([
