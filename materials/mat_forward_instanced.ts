@@ -25,12 +25,12 @@ let vertex = `#version 300 es\n
             attr_column4
         );
 
-        vec4 world_position = world * instance * attr_position;
-        gl_Position = pv * world_position;
+        vec4 vert_position = world * instance * attr_position;
+        gl_Position = pv * vert_position;
 
         vert_color = vec4(attr_color, 1.0);
 
-        float eye_distance = length(eye - world_position.xyz);
+        float eye_distance = length(eye - vert_position.xyz);
         float fog_amount = clamp(0.0, 1.0, eye_distance / fog_distance);
         vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));
     }

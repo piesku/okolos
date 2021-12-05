@@ -119,7 +119,7 @@ export function render_colored_unlit(
 
 export interface RenderColoredShaded {
     readonly Kind: RenderKind.ColoredShaded;
-    Material: Material<ColoredShadedLayout & ForwardShadingLayout>;
+    Material: Material<ColoredShadedLayout & ForwardShadingLayout & FogLayout>;
     Mesh: Mesh;
     Phase: RenderPhase;
     FrontFace: GLenum;
@@ -130,7 +130,7 @@ export interface RenderColoredShaded {
 }
 
 export function render_colored_shaded(
-    material: Material<ColoredShadedLayout & ForwardShadingLayout>,
+    material: Material<ColoredShadedLayout & ForwardShadingLayout & FogLayout>,
     mesh: Mesh,
     diffuse_color: Vec4,
     shininess: number = 0,

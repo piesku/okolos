@@ -1,6 +1,6 @@
 import {link, Material} from "../common/material.js";
 import {GL_TRIANGLES} from "../common/webgl.js";
-import {ColoredShadedLayout, ForwardShadingLayout} from "./layout.js";
+import {ColoredShadedLayout, FogLayout, ForwardShadingLayout} from "./layout.js";
 
 let vertex = `#version 300 es\n
 
@@ -16,6 +16,8 @@ let vertex = `#version 300 es\n
     uniform float shininess;
     uniform vec4 light_positions[MAX_LIGHTS];
     uniform vec4 light_details[MAX_LIGHTS];
+    uniform vec4 fog_color;
+    uniform float fog_distance;
 
     in vec4 attr_position;
     in vec3 attr_normal;
@@ -71,6 +73,10 @@ let vertex = `#version 300 es\n
         }
 
         vert_color = vec4(light_acc, diffuse_color.a);
+
+        float eye_distance = length(eye - vert_position.xyz);
+        float fog_amount = clamp(0.0, 1.0, eye_distance / fog_distance);
+        vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));
     }
 `;
 
@@ -88,7 +94,7 @@ let fragment = `#version 300 es\n
 
 export function mat_forward_colored_gouraud(
     gl: WebGL2RenderingContext
-): Material<ColoredShadedLayout & ForwardShadingLayout> {
+): Material<ColoredShadedLayout & ForwardShadingLayout & FogLayout> {
     let program = link(gl, vertex, fragment);
     return {
         Mode: GL_TRIANGLES,
@@ -105,6 +111,9 @@ export function mat_forward_colored_gouraud(
             Eye: gl.getUniformLocation(program, "eye")!,
             LightPositions: gl.getUniformLocation(program, "light_positions")!,
             LightDetails: gl.getUniformLocation(program, "light_details")!,
+
+            FogColor: gl.getUniformLocation(program, "fog_color")!,
+            FogDistance: gl.getUniformLocation(program, "fog_distance")!,
 
             VertexPosition: gl.getAttribLocation(program, "attr_position")!,
             VertexNormal: gl.getAttribLocation(program, "attr_normal")!,

@@ -128,6 +128,8 @@ function use_material(game: Game, render: Render, eye: CameraEye) {
             game.Gl.uniform3fv(render.Material.Locations.Eye, eye.Position);
             game.Gl.uniform4fv(render.Material.Locations.LightPositions, game.LightPositions);
             game.Gl.uniform4fv(render.Material.Locations.LightDetails, game.LightDetails);
+            game.Gl.uniform4fv(render.Material.Locations.FogColor, game.ClearColor);
+            game.Gl.uniform1f(render.Material.Locations.FogDistance, game.FogDistance);
             break;
         case RenderKind.TexturedUnlit:
             game.Gl.useProgram(render.Material.Program);
