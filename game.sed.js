@@ -400,7 +400,7 @@ throw new Error(gl.getShaderInfoLog(shader));
 return shader;
 }
 
-let vertex = `#version 300 es\n
+let vertex$1 = `#version 300 es\n
 
 
 const int MAX_LIGHTS = 8;
@@ -471,7 +471,7 @@ light_acc += specular_color.rgb * specular_factor * light_color * light_intensit
 vert_color = vec4(light_acc, diffuse_color.a);
 }
 `;
-let fragment = `#version 300 es\n
+let fragment$1 = `#version 300 es\n
 precision mediump float;
 
 in vec4 vert_color;
@@ -483,7 +483,7 @@ frag_color = vert_color;
 }
 `;
 function mat_forward_colored_gouraud(gl) {
-let program = link(gl, vertex, fragment);
+let program = link(gl, vertex$1, fragment$1);
 return {
 Mode: GL_TRIANGLES,
 Program: program,
@@ -499,6 +499,62 @@ LightPositions: gl.getUniformLocation(program, "light_positions"),
 LightDetails: gl.getUniformLocation(program, "light_details"),
 VertexPosition: gl.getAttribLocation(program, "attr_position"),
 VertexNormal: gl.getAttribLocation(program, "attr_normal"),
+},
+};
+}
+
+let vertex = `#version 300 es\n
+uniform mat4 pv;
+uniform mat4 world;
+uniform vec3 eye;
+uniform vec4 fog_color;
+in vec3 attr_position;
+in vec3 attr_column1;
+in vec3 attr_column2;
+in vec3 attr_column3;
+in vec3 attr_column4;
+
+in vec3 attr_color;
+
+out vec4 vert_color;
+void main() {
+mat3 rotation = mat3(
+attr_column1,
+attr_column2,
+attr_column3
+);
+vec4 world_position = world * mat4(rotation) * vec4(attr_position + attr_column4, 1.0);
+gl_Position = pv * world_position;
+vert_color = vec4(attr_color, 1.0);
+float eye_distance = length(eye - world_position.xyz);
+float fog_amount = clamp(0.0, 1.0, eye_distance / 10.0);
+vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));
+}
+`;
+let fragment = `#version 300 es\n
+precision mediump float;
+in vec4 vert_color;
+out vec4 frag_color;
+void main() {
+frag_color = vert_color;
+}
+`;
+function mat_forward_instanced(gl) {
+let program = link(gl, vertex, fragment);
+return {
+Mode: GL_TRIANGLES,
+Program: program,
+Locations: {
+Pv: gl.getUniformLocation(program, "pv"),
+World: gl.getUniformLocation(program, "world"),
+Eye: gl.getUniformLocation(program, "eye"),
+FogColor: gl.getUniformLocation(program, "fog_color"),
+VertexPosition: gl.getAttribLocation(program, "attr_position"),
+InstanceColumn1: gl.getAttribLocation(program, "attr_column1"),
+InstanceColumn2: gl.getAttribLocation(program, "attr_column2"),
+InstanceColumn3: gl.getAttribLocation(program, "attr_column3"),
+InstanceColumn4: gl.getAttribLocation(program, "attr_column4"),
+InstanceColor: gl.getAttribLocation(program, "attr_color"),
 },
 };
 }
@@ -2618,6 +2674,9 @@ switch (render.Kind) {
 case 1 /* ColoredShaded */:
 use_colored_shaded(game, render.Material, eye);
 break;
+case 8 /* Instanced */:
+use_instanced(game, render.Material, eye);
+break;
 }
 }
 if (render.FrontFace !== current_front_face) {
@@ -2628,6 +2687,8 @@ switch (render.Kind) {
 case 1 /* ColoredShaded */:
 draw_colored_shaded(game, transform, render);
 break;
+case 8 /* Instanced */:
+draw_instanced(game, transform, render);
 }
 }
 }
@@ -2647,6 +2708,20 @@ game.Gl.uniform4fv(render.Material.Locations.SpecularColor, render.SpecularColor
 game.Gl.uniform1f(render.Material.Locations.Shininess, render.Shininess);
 game.Gl.bindVertexArray(render.Vao);
 game.Gl.drawElements(render.Material.Mode, render.Mesh.IndexCount, GL_UNSIGNED_SHORT, 0);
+game.Gl.bindVertexArray(null);
+}
+function use_instanced(game, material, eye) {
+game.Gl.disable(GL_CULL_FACE);
+game.Gl.useProgram(material.Program);
+game.Gl.uniformMatrix4fv(material.Locations.Pv, false, eye.Pv);
+game.Gl.uniform3fv(material.Locations.Eye, eye.Position);
+game.Gl.uniform4fv(material.Locations.FogColor, game.ClearColor);
+}
+function draw_instanced(game, transform, render) {
+game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+game.Gl.bindVertexArray(render.Vao);
+let instance_count = Math.floor(render.InstanceCount);
+game.Gl.drawElementsInstanced(render.Material.Mode, render.Mesh.IndexCount, GL_UNSIGNED_SHORT, 0, instance_count);
 game.Gl.bindVertexArray(null);
 }
 
@@ -2831,11 +2906,13 @@ this.World = new World();
 this.XrSupported = false;
 this.XrInputs = {};
 this.MaterialColoredGouraud = mat_forward_colored_gouraud(this.Gl);
+this.MaterialInstanced = mat_forward_instanced(this.Gl);
 this.MeshCube = mesh_cube(this.Gl);
 this.MeshHand = mesh_hand(this.Gl);
 
 this.LightPositions = new Float32Array(4 * 8);
 this.LightDetails = new Float32Array(4 * 8);
+this.ClearColor = [1, 1, 1, 1.0];
 if (navigator.xr) {
 xr_init(this);
 }
@@ -2904,6 +2981,15 @@ sys_light(this);
 sys_render_forward(this);
 sys_ui(this);
 }
+}
+
+let seed = 1;
+function rand() {
+seed = (seed * 16807) % 2147483647;
+return (seed - 1) / 2147483646;
+}
+function float(min = 0, max = 1) {
+return rand() * (max - min) + min;
 }
 
 function camera_forward_perspective(fovy, near, far) {
@@ -3049,6 +3135,49 @@ Shininess: shininess,
 };
 };
 }
+function render_instanced(mesh, offsets, colors, front_face = GL_CW) {
+return (game, entity) => {
+let material = game.MaterialInstanced;
+let vao = game.Gl.createVertexArray();
+game.Gl.bindVertexArray(vao);
+game.Gl.bindBuffer(GL_ARRAY_BUFFER, mesh.VertexBuffer);
+game.Gl.enableVertexAttribArray(material.Locations.VertexPosition);
+game.Gl.vertexAttribPointer(material.Locations.VertexPosition, 3, GL_FLOAT, false, 0, 0);
+let instance_buffer = game.Gl.createBuffer();
+game.Gl.bindBuffer(GL_ARRAY_BUFFER, instance_buffer);
+game.Gl.bufferData(GL_ARRAY_BUFFER, offsets, GL_STATIC_DRAW);
+game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn1);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColumn1, 3, GL_FLOAT, false, 4 * 16, 0);
+game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn1, 1);
+game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn2);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColumn2, 3, GL_FLOAT, false, 4 * 16, 4 * 4);
+game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn2, 1);
+game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn3);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColumn3, 3, GL_FLOAT, false, 4 * 16, 4 * 8);
+game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn3, 1);
+game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn4);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColumn4, 3, GL_FLOAT, false, 4 * 16, 4 * 12);
+game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn4, 1);
+let instance_color_buffer = game.Gl.createBuffer();
+game.Gl.bindBuffer(GL_ARRAY_BUFFER, instance_color_buffer);
+game.Gl.bufferData(GL_ARRAY_BUFFER, colors, GL_STATIC_DRAW);
+game.Gl.enableVertexAttribArray(material.Locations.InstanceColor);
+game.Gl.vertexAttribPointer(material.Locations.InstanceColor, 3, GL_FLOAT, false, 0, 0);
+game.Gl.vertexAttribDivisor(material.Locations.InstanceColor, 1);
+game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.IndexBuffer);
+game.Gl.bindVertexArray(null);
+game.World.Signature[entity] |= 128 /* Render */;
+game.World.Render[entity] = {
+Kind: 8 /* Instanced */,
+Material: material,
+Mesh: mesh,
+Vao: vao,
+InstanceCount: offsets.length / 16,
+InstanceBuffer: instance_buffer,
+FrontFace: front_face,
+};
+};
+}
 
 function blueprint_viewer(game) {
 return [
@@ -3105,23 +3234,50 @@ function scene_stage(game) {
 game.World = new World();
 game.Camera = undefined;
 game.ViewportResized = true;
-game.Gl.clearColor(0.9, 0.9, 0.9, 1);
+game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
 
 instantiate(game, [...blueprint_camera(), transform([1, 2, 5], [0, 1, 0, 0])]);
 
 instantiate(game, [...blueprint_viewer(game), transform([1, 2, 5], [0, 1, 0, 0])]);
 
 instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
-
-instantiate(game, [
-transform(undefined, undefined, [7, 1, 7]),
-render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [1, 1, 0.3, 1]),
+let box_count = 20000;
+let ground_x = 10;
+let ground_y = 10;
+let ground_size = 10;
+let radius = ground_size * ground_x * 2;
+let element_count = box_count + ground_x * ground_y;
+let matrices = new Float32Array(element_count * 16);
+let colors = new Float32Array(element_count * 3);
+let off = 0;
+for (let x = 0; x < ground_x; x++) {
+for (let y = 0; y < ground_x; y++) {
+let tx = -ground_x / 2 + x;
+let ty = -ground_y / 2 + y;
+let view = new Float32Array(matrices.buffer, off * 4 * 16, 16);
+off++;
+from_rotation_translation_scale(view, [0, 0, 0, 1], [tx, -1, ty], [ground_size, 1, ground_size]);
+let color = new Float32Array(colors.buffer, off * 4 * 3, 3);
+color[0] = float(0, 1);
+color[1] = float(0, 1);
+color[2] = float(0, 1);
+}
+}
+for (let i = ground_x * ground_y; i < element_count; i++) {
+let offset = [float(-radius, radius), 0, float(-radius, radius)];
+let rotation = [0, 0, 0, 1]; //from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90));
+let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
+from_rotation_translation_scale(view, rotation, offset, [
+float(0.1, 0.5),
+float(0.5, 5),
+float(0.1, 0.5),
 ]);
-
-instantiate(game, [
-transform([0, 1, 0]),
-render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [1, 1, 0.3, 1]),
-]);
+let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
+color[0] = float(0, 1);
+color[1] = float(0, 1);
+color[2] = float(0, 1);
+}
+instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices, colors)]);
 }
 
 let game = new Game();
