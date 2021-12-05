@@ -1,6 +1,6 @@
 import {instantiate} from "../../common/game.js";
 import {from_rotation_translation_scale} from "../../common/mat4.js";
-import {Quat, Vec3} from "../../common/math.js";
+import {from_euler} from "../../common/quat.js";
 import {float} from "../../common/random.js";
 import {blueprint_camera} from "../blueprints/blu_camera.js";
 import {blueprint_viewer} from "../blueprints/blu_viewer.js";
@@ -55,18 +55,34 @@ export function scene_stage(game: Game) {
     }
 
     for (let i = ground_x * ground_z; i < element_count; i++) {
-        let offset: Vec3 = [
-            float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-            0,
-            float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-        ];
-        let rotation: Quat = [0, 0, 0, 1]; //from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90));
         let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
-        from_rotation_translation_scale(view, rotation, offset, [
-            float(0.1, 0.5),
-            float(0.5, 5),
-            float(0.1, 0.5),
-        ]);
+        let r = float();
+        if (r < 0.99) {
+            // Rubble on the ground.
+            from_rotation_translation_scale(
+                view,
+                from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+                [
+                    float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+                    0,
+                    float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+                ],
+                [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
+            );
+        } else {
+            // Floating boxes.
+            let s = float(1, 5);
+            from_rotation_translation_scale(
+                view,
+                from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+                [
+                    float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+                    float(s, 15),
+                    float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+                ],
+                [s, s, s]
+            );
+        }
 
         let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
         color[0] = float(0, 1);
