@@ -657,7 +657,7 @@ export function render_instanced(
         game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn1);
         game.Gl.vertexAttribPointer(
             material.Locations.InstanceColumn1,
-            3,
+            4,
             GL_FLOAT,
             false,
             4 * 16,
@@ -668,7 +668,7 @@ export function render_instanced(
         game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn2);
         game.Gl.vertexAttribPointer(
             material.Locations.InstanceColumn2,
-            3,
+            4,
             GL_FLOAT,
             false,
             4 * 16,
@@ -679,7 +679,7 @@ export function render_instanced(
         game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn3);
         game.Gl.vertexAttribPointer(
             material.Locations.InstanceColumn3,
-            3,
+            4,
             GL_FLOAT,
             false,
             4 * 16,
@@ -690,7 +690,7 @@ export function render_instanced(
         game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn4);
         game.Gl.vertexAttribPointer(
             material.Locations.InstanceColumn4,
-            3,
+            4,
             GL_FLOAT,
             false,
             4 * 16,
@@ -704,7 +704,6 @@ export function render_instanced(
 
         game.Gl.enableVertexAttribArray(material.Locations.InstanceColor);
         game.Gl.vertexAttribPointer(material.Locations.InstanceColor, 3, GL_FLOAT, false, 0, 0);
-
         game.Gl.vertexAttribDivisor(material.Locations.InstanceColor, 1);
 
         game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.IndexBuffer);

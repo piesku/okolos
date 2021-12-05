@@ -7,24 +7,28 @@ let vertex = `#version 300 es\n
     uniform mat4 world;
     uniform vec3 eye;
     uniform vec4 fog_color;
-    in vec3 attr_position;
-    in vec3 attr_column1;
-    in vec3 attr_column2;
-    in vec3 attr_column3;
-    in vec3 attr_column4;
 
+    in vec4 attr_position;
+    in vec4 attr_column1;
+    in vec4 attr_column2;
+    in vec4 attr_column3;
+    in vec4 attr_column4;
     in vec3 attr_color;
-
     out vec4 vert_color;
+
     void main() {
-        mat3 rotation = mat3(
+        mat4 instance = mat4(
             attr_column1,
             attr_column2,
-            attr_column3
+            attr_column3,
+            attr_column4
         );
-        vec4 world_position = world * mat4(rotation) * vec4(attr_position + attr_column4, 1.0);
+
+        vec4 world_position = world * instance * attr_position;
         gl_Position = pv * world_position;
+
         vert_color = vec4(attr_color, 1.0);
+
         float eye_distance = length(eye - world_position.xyz);
         float fog_amount = clamp(0.0, 1.0, eye_distance / 10.0);
         vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));

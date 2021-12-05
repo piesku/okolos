@@ -29,15 +29,15 @@ export function scene_stage(game: Game) {
     let ground_x = 10;
     let ground_y = 10;
     let ground_size = 10;
-    let radius = ground_size * ground_x * 2;
+    let radius = ground_size * ground_x;
     let element_count = box_count + ground_x * ground_y;
     let matrices = new Float32Array(element_count * 16);
     let colors = new Float32Array(element_count * 3);
     let off = 0;
     for (let x = 0; x < ground_x; x++) {
         for (let y = 0; y < ground_x; y++) {
-            let tx = -ground_x / 2 + x;
-            let ty = -ground_y / 2 + y;
+            let tx = -ground_x / 2 + x * ground_size;
+            let ty = -ground_y / 2 + y * ground_size;
             let view = new Float32Array(matrices.buffer, off * 4 * 16, 16);
             off++;
             from_rotation_translation_scale(
