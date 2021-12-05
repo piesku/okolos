@@ -17,27 +17,27 @@ export function scene_stage(game: Game) {
     game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
 
     // Camera.
-    instantiate(game, [...blueprint_camera(game), transform([1, 2, 5], [0, 1, 0, 0])]);
+    instantiate(game, [...blueprint_camera(game), transform([0, 2, 0], [0, 1, 0, 0])]);
 
     // VR Camera.
-    instantiate(game, [...blueprint_viewer(game), transform([1, 2, 5], [0, 1, 0, 0])]);
+    instantiate(game, [...blueprint_viewer(game), transform([0, 2, 0], [0, 1, 0, 0])]);
 
     // Light.
     instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
 
     let box_count = 20000;
     let ground_x = 10;
-    let ground_y = 10;
+    let ground_z = 10;
     let ground_size = 10;
-    let radius = ground_size * ground_x;
-    let element_count = box_count + ground_x * ground_y;
+
+    let element_count = box_count + ground_x * ground_z;
     let matrices = new Float32Array(element_count * 16);
     let colors = new Float32Array(element_count * 3);
     let off = 0;
     for (let x = 0; x < ground_x; x++) {
-        for (let y = 0; y < ground_x; y++) {
-            let tx = -ground_x / 2 + x * ground_size;
-            let ty = -ground_y / 2 + y * ground_size;
+        for (let z = 0; z < ground_z; z++) {
+            let tx = (x - ground_x / 2 + 0.5) * ground_size;
+            let ty = (z - ground_z / 2 + 0.5) * ground_size;
             let view = new Float32Array(matrices.buffer, off * 4 * 16, 16);
             off++;
             from_rotation_translation_scale(
@@ -54,8 +54,12 @@ export function scene_stage(game: Game) {
         }
     }
 
-    for (let i = ground_x * ground_y; i < element_count; i++) {
-        let offset: Vec3 = [float(-radius, radius), 0, float(-radius, radius)];
+    for (let i = ground_x * ground_z; i < element_count; i++) {
+        let offset: Vec3 = [
+            float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+            0,
+            float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+        ];
         let rotation: Quat = [0, 0, 0, 1]; //from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90));
         let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
         from_rotation_translation_scale(view, rotation, offset, [
