@@ -1,9 +1,17 @@
 import {get_translation} from "../../common/mat4.js";
 import {Vec3} from "../../common/math.js";
 import {from_axis, multiply} from "../../common/quat.js";
-import {add, copy, length, subtract, transform_direction} from "../../common/vec3.js";
+import {
+    add,
+    copy,
+    length,
+    subtract,
+    transform_direction,
+    transform_position,
+} from "../../common/vec3.js";
 import {Entity} from "../../common/world.js";
 import {ControlPlayerKind} from "../components/com_control_player.js";
+import {RigidKind} from "../components/com_rigid_body.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
 
@@ -51,18 +59,20 @@ function update(game: Game, entity: Entity) {
         // Walking in the direction of looking.
         let left = game.XrInputs["left"];
         if (left?.gamepad) {
-            let axis_strafe = -left.gamepad.axes[2];
+            let axis_strafe = left.gamepad.axes[2];
             if (axis_strafe) {
                 let direction: Vec3 = [axis_strafe, 0, 0];
                 transform_direction(direction, direction, head_transform.World);
+                transform_direction(direction, direction, transform.Self);
                 direction[1] = 0;
                 add(move.Direction, move.Direction, direction);
             }
 
-            let axis_forward = -left.gamepad.axes[3];
+            let axis_forward = left.gamepad.axes[3];
             if (axis_forward) {
                 let direction: Vec3 = [0, 0, axis_forward];
                 transform_direction(direction, direction, head_transform.World);
+                transform_direction(direction, direction, transform.Self);
                 direction[1] = 0;
                 add(move.Direction, move.Direction, direction);
             }
@@ -105,14 +115,13 @@ function update(game: Game, entity: Entity) {
                 if (!left_climbing) {
                     left_climbing = true;
                     get_translation(left_last_position, hand_transform.World);
+                    transform_position(left_last_position, left_last_position, transform.Self);
                 } else {
                     get_translation(left_curr_position, hand_transform.World);
+                    transform_position(left_curr_position, left_curr_position, transform.Self);
                     subtract(left_offset, left_last_position, left_curr_position);
                     copy(left_last_position, left_curr_position);
 
-                    // Fix WebXR's +X and +Z axes.
-                    left_offset[0] *= -1;
-                    left_offset[2] *= -1;
                     transform_direction(left_offset, left_offset, transform.World);
                     add(transform.Translation, transform.Translation, left_offset);
                     transform.Dirty = true;
@@ -131,14 +140,13 @@ function update(game: Game, entity: Entity) {
                 if (!right_climbing) {
                     right_climbing = true;
                     get_translation(right_last_position, hand_transform.World);
+                    transform_position(right_last_position, right_last_position, transform.Self);
                 } else {
                     get_translation(right_curr_position, hand_transform.World);
+                    transform_position(right_curr_position, right_curr_position, transform.Self);
                     subtract(right_offset, right_last_position, right_curr_position);
                     copy(right_last_position, right_curr_position);
 
-                    // Fix WebXR's +X and +Z axes.
-                    right_offset[0] *= -1;
-                    right_offset[2] *= -1;
                     transform_direction(right_offset, right_offset, transform.World);
                     add(transform.Translation, transform.Translation, right_offset);
                     transform.Dirty = true;
@@ -146,6 +154,13 @@ function update(game: Game, entity: Entity) {
             }
         } else if (right_climbing) {
             right_climbing = false;
+        }
+
+        let rigid_body = game.World.RigidBody[entity];
+        if (left_climbing || right_climbing) {
+            rigid_body.Kind = RigidKind.Kinematic;
+        } else {
+            rigid_body.Kind = RigidKind.Dynamic;
         }
     }
 }

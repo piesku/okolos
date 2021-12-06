@@ -6,12 +6,15 @@ import {ControlPlayerKind, control_player} from "../components/com_control_playe
 import {ControlXrKind, control_xr} from "../components/com_control_xr.js";
 import {move} from "../components/com_move.js";
 import {render_colored_shaded} from "../components/com_render.js";
+import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
 import {transform} from "../components/com_transform.js";
 import {Game, Layer} from "../game.js";
 
 export function blueprint_viewer(game: Game) {
     return [
         control_player(ControlPlayerKind.Motion),
+        collide(true, Layer.Player, Layer.Terrain, [0.5, 1.5, 0.1]),
+        rigid_body(RigidKind.Dynamic, 0.1),
         move(2, 1),
         children(
             // An intermediate entity for walk bobbing.
@@ -32,7 +35,7 @@ export function blueprint_viewer(game: Game) {
                         // Left hand (must be Children[2]).
                         transform(),
                         control_xr(ControlXrKind.Left),
-                        collide(true, Layer.Player, Layer.Terrain, [0.1, 0.1, 0.1]),
+                        collide(true, Layer.Hand, Layer.Terrain, [0.1, 0.1, 0.1]),
                         children([
                             // The hand mesh; must be Children[0].
                             transform(undefined, undefined, [-1, 1, 1]),
@@ -50,7 +53,7 @@ export function blueprint_viewer(game: Game) {
                         // Right hand (must be Children[3]).
                         transform(),
                         control_xr(ControlXrKind.Right),
-                        collide(true, Layer.Player, Layer.Terrain, [0.1, 0.1, 0.1]),
+                        collide(true, Layer.Hand, Layer.Terrain, [0.1, 0.1, 0.1]),
                         children([
                             // The hand mesh; must be Children[0].
                             transform(),

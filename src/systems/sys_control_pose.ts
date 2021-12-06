@@ -22,8 +22,14 @@ function update(game: Game, entity: Entity) {
     let control = game.World.ControlXr[entity];
 
     if (control.Kind === ControlXrKind.Head) {
-        let headset = game.XrFrame!.getViewerPose(game.XrSpace);
-        transform.World = headset.transform.matrix;
+        let pose = game.XrFrame!.getViewerPose(game.XrSpace);
+        transform.Translation[0] = pose.transform.position.x;
+        transform.Translation[1] = pose.transform.position.y;
+        transform.Translation[2] = pose.transform.position.z;
+        transform.Rotation[0] = pose.transform.orientation.x;
+        transform.Rotation[1] = pose.transform.orientation.y;
+        transform.Rotation[2] = pose.transform.orientation.z;
+        transform.Rotation[3] = pose.transform.orientation.w;
         transform.Dirty = true;
         return;
     }
@@ -34,7 +40,13 @@ function update(game: Game, entity: Entity) {
             let pose = game.XrFrame!.getPose(input.gripSpace!, game.XrSpace!);
             if (pose) {
                 control.Pose = pose;
-                transform.World = pose.transform.matrix;
+                transform.Translation[0] = pose.transform.position.x;
+                transform.Translation[1] = pose.transform.position.y;
+                transform.Translation[2] = pose.transform.position.z;
+                transform.Rotation[0] = pose.transform.orientation.x;
+                transform.Rotation[1] = pose.transform.orientation.y;
+                transform.Rotation[2] = pose.transform.orientation.z;
+                transform.Rotation[3] = pose.transform.orientation.w;
                 transform.Dirty = true;
             }
         }
@@ -47,7 +59,13 @@ function update(game: Game, entity: Entity) {
             let pose = game.XrFrame!.getPose(input.gripSpace!, game.XrSpace!);
             if (pose) {
                 control.Pose = pose;
-                transform.World = pose.transform.matrix;
+                transform.Translation[0] = pose.transform.position.x;
+                transform.Translation[1] = pose.transform.position.y;
+                transform.Translation[2] = pose.transform.position.z;
+                transform.Rotation[0] = pose.transform.orientation.x;
+                transform.Rotation[1] = pose.transform.orientation.y;
+                transform.Rotation[2] = pose.transform.orientation.z;
+                transform.Rotation[3] = pose.transform.orientation.w;
                 transform.Dirty = true;
             }
         }

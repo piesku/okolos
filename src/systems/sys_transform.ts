@@ -20,17 +20,12 @@ export function sys_transform(game: Game, delta: number) {
 function update_transform(game: Game, entity: Entity, transform: Transform) {
     transform.Dirty = false;
 
-    if (game.XrFrame && game.World.Signature[entity] & Has.ControlXr) {
-        // Pose transforms have their World matrix set from XRPose by other
-        // systems. Their translation, rotation and scale are ignored.
-    } else {
-        from_rotation_translation_scale(
-            transform.World,
-            transform.Rotation,
-            transform.Translation,
-            transform.Scale
-        );
-    }
+    from_rotation_translation_scale(
+        transform.World,
+        transform.Rotation,
+        transform.Translation,
+        transform.Scale
+    );
 
     if (transform.Parent !== undefined) {
         let parent_transform = game.World.Transform[transform.Parent];

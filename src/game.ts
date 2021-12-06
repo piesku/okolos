@@ -138,4 +138,5 @@ export const enum Layer {
     None = 0,
     Terrain = 1,
     Player = 2,
+    Hand = 4,
 }
