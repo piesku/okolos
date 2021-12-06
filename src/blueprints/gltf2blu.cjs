@@ -66,11 +66,23 @@ let props = nodes.reduce((acc, node) => {
         const mesh = split_name[0];
         const name = split_name[1];
         acc[name] = acc[name] || [];
-        acc[name].push(create_child(mesh, node.translation, node.rotation, node.scale));
+        acc[name].push(
+            create_child(
+                mesh,
+                node.translation,
+                node.rotation,
+                node.scale && node.scale.map((e) => e * 2)
+            )
+        );
     } else {
         // blueprint
         blueprint_elements.push(
-            create_child_with_children(node.name, node.translation, node.rotation, node.scale)
+            create_child_with_children(
+                node.name,
+                node.translation,
+                node.rotation,
+                node.scale && node.scale.map((e) => e * 2)
+            )
         );
     }
     return acc;
