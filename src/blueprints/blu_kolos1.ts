@@ -50,7 +50,7 @@ export function prop_head(game: Game) {
 export function prop_left_hand(game: Game) {
     return [
         [
-            transform([0, -6.6, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
+            transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -58,7 +58,7 @@ export function prop_left_hand(game: Game) {
             ),
         ],
         [
-            transform([0, -2, 0], [0, 0.71, 0, 0.71], [1.2, 5.2, 1.2]),
+            transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -71,7 +71,7 @@ export function prop_left_hand(game: Game) {
 export function prop_left_leg(game: Game) {
     return [
         [
-            transform([0, -6.6, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
+            transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -79,7 +79,7 @@ export function prop_left_leg(game: Game) {
             ),
         ],
         [
-            transform([0, -7.8, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
+            transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -87,7 +87,7 @@ export function prop_left_leg(game: Game) {
             ),
         ],
         [
-            transform([0, -8, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
+            transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -95,7 +95,7 @@ export function prop_left_leg(game: Game) {
             ),
         ],
         [
-            transform([0, -2, 0], [0, 0.71, 0, 0.71], [1.2, 5.2, 1.2]),
+            transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -108,7 +108,7 @@ export function prop_left_leg(game: Game) {
 export function prop_right_hand(game: Game) {
     return [
         [
-            transform([0, -6.6, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
+            transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -116,7 +116,7 @@ export function prop_right_hand(game: Game) {
             ),
         ],
         [
-            transform([0, -2, 0], [0, 0.71, 0, 0.71], [1.2, 5.2, 1.2]),
+            transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -129,7 +129,7 @@ export function prop_right_hand(game: Game) {
 export function prop_right_leg(game: Game) {
     return [
         [
-            transform([0, -6.6, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
+            transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -137,7 +137,7 @@ export function prop_right_leg(game: Game) {
             ),
         ],
         [
-            transform([0, -7.8, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
+            transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -145,7 +145,7 @@ export function prop_right_leg(game: Game) {
             ),
         ],
         [
-            transform([0, -8, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
+            transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -153,7 +153,7 @@ export function prop_right_leg(game: Game) {
             ),
         ],
         [
-            transform([0, -2, 0], [0, 0.71, 0, 0.71], [1.2, 5.2, 1.2]),
+            transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
                 game.MeshCube,
@@ -167,33 +167,33 @@ export function blue_kolos1(game: Game) {
     return [
         children(
             [
-                transform([0, 12, 0], undefined, undefined),
+                transform([0, 14.5, 0], undefined, undefined),
                 children(...prop_body(game)),
                 animate(kolos1_anims.body),
             ],
 
-            [transform([0, 18.5, 0], undefined, undefined), children(...prop_head(game))],
+            [transform([0, 21, 0], undefined, undefined), children(...prop_head(game))],
 
             [
-                transform([5, 14.5, 0], undefined, undefined),
+                transform([5, 18, 0], undefined, undefined),
                 children(...prop_left_hand(game)),
                 animate(kolos1_anims.left_hand),
             ],
 
             [
-                transform([3, 8.5, 0], undefined, undefined),
+                transform([3, 11, 0], undefined, undefined),
                 children(...prop_left_leg(game)),
                 animate(kolos1_anims.left_leg),
             ],
 
             [
-                transform([-5, 14.5, 0], undefined, undefined),
+                transform([-5, 18, 0], undefined, undefined),
                 children(...prop_right_hand(game)),
                 animate(kolos1_anims.right_hand),
             ],
 
             [
-                transform([-3, 8.5, 0], undefined, undefined),
+                transform([-3, 11, 0], undefined, undefined),
                 children(...prop_right_leg(game)),
                 animate(kolos1_anims.right_leg),
             ]
