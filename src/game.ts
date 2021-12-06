@@ -6,6 +6,7 @@ import {mat_forward_colored_wireframe} from "../materials/mat_forward_colored_un
 import {mat_forward_instanced} from "../materials/mat_forward_instanced.js";
 import {mesh_cube} from "../meshes/cube.js";
 import {mesh_hand} from "../meshes/hand.js";
+import {sys_animate} from "./systems/sys_animate.js";
 import {sys_camera} from "./systems/sys_camera.js";
 import {sys_collide} from "./systems/sys_collide.js";
 import {sys_control_oculus} from "./systems/sys_control_oculus.js";
@@ -112,6 +113,7 @@ export class Game extends Game3D {
         sys_control_player(this, delta);
 
         // Game logic.
+        sys_animate(this, delta);
         sys_move(this, delta);
 
         // Physics and collisions.

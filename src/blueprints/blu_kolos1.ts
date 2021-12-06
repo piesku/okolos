@@ -1,7 +1,9 @@
+import {animate} from "../components/com_animate.js";
 import {children} from "../components/com_children.js";
 import {render_colored_shaded} from "../components/com_render.js";
 import {transform} from "../components/com_transform.js";
 import {Game} from "../game.js";
+import {kolos1_anims} from "./animation_blu_kolos1.js";
 
 export function prop_head(game: Game) {
     return [
@@ -166,15 +168,35 @@ export function blue_kolos1(game: Game) {
         children(
             [transform([0, 18.5, 0], undefined, undefined), children(...prop_head(game))],
 
-            [transform([0, 12, 0], undefined, undefined), children(...prop_body(game))],
+            [
+                transform([0, 12, 0], undefined, undefined),
+                animate(kolos1_anims.body),
+                children(...prop_body(game)),
+            ],
 
-            [transform([0, 0, 3], undefined, undefined), children(...prop_left_leg(game))],
+            [
+                transform([0, 0, 3], undefined, undefined),
+                animate(kolos1_anims.left_leg),
+                children(...prop_left_leg(game)),
+            ],
 
-            [transform([0, 0, -3], undefined, undefined), children(...prop_right_leg(game))],
+            [
+                transform([0, 0, -3], undefined, undefined),
+                animate(kolos1_anims.right_leg),
+                children(...prop_right_leg(game)),
+            ],
 
-            [transform([0, 14.5, 5], undefined, undefined), children(...prop_left_hand(game))],
+            [
+                transform([0, 14.5, 5], undefined, undefined),
+                animate(kolos1_anims.left_hand),
+                children(...prop_left_hand(game)),
+            ],
 
-            [transform([0, 14.5, -5], undefined, undefined), children(...prop_right_hand(game))]
+            [
+                transform([0, 14.5, -5], undefined, undefined),
+                animate(kolos1_anims.right_hand),
+                children(...prop_right_hand(game)),
+            ]
         ),
     ];
 }

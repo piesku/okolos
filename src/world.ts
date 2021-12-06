@@ -1,4 +1,5 @@
 import {WorldImpl} from "../common/world.js";
+import {Animate} from "./components/com_animate.js";
 import {Camera} from "./components/com_camera.js";
 import {Children} from "./components/com_children.js";
 import {Collide} from "./components/com_collide.js";
@@ -11,6 +12,7 @@ import {RigidBody} from "./components/com_rigid_body.js";
 import {Transform} from "./components/com_transform.js";
 
 const enum Component {
+    Animate,
     Camera,
     Children,
     Collide,
@@ -25,6 +27,7 @@ const enum Component {
 
 export const enum Has {
     None = 0,
+    Animate = 1 << Component.Animate,
     Camera = 1 << Component.Camera,
     Children = 1 << Component.Children,
     Collide = 1 << Component.Collide,
@@ -38,6 +41,7 @@ export const enum Has {
 }
 
 export class World extends WorldImpl {
+    Animate: Array<Animate> = [];
     Camera: Array<Camera> = [];
     Children: Array<Children> = [];
     Collide: Array<Collide> = [];
