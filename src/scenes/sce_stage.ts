@@ -1,5 +1,6 @@
 import {instantiate} from "../../common/game.js";
 import {from_rotation_translation_scale} from "../../common/mat4.js";
+import {from_euler} from "../../common/quat.js";
 import {float, set_seed} from "../../common/random.js";
 import {blueprint_camera} from "../blueprints/blu_camera.js";
 import {blue_kolos1} from "../blueprints/blu_kolos1.js";
@@ -7,6 +8,7 @@ import {blueprint_viewer} from "../blueprints/blu_viewer.js";
 import {collide} from "../components/com_collide.js";
 import {control_always} from "../components/com_control_always.js";
 import {light_directional} from "../components/com_light.js";
+import {move} from "../components/com_move.js";
 import {render_instanced} from "../components/com_render.js";
 import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
 import {transform} from "../components/com_transform.js";
@@ -112,9 +114,12 @@ export function scene_stage(game: Game) {
     //     ]);
     // }
 
+    instantiate(game, [transform([20, 0, -30]), ...blue_kolos1(game)]);
+
     instantiate(game, [
-        transform([20, 0, -30]),
+        transform([-20, 0, 30], from_euler([0, 0, 0, 1], 0, 180, 0)),
+        move(2, 0),
         ...blue_kolos1(game),
-        control_always(null, null, "walk"),
+        control_always([0, 0, 1], null, "walk"),
     ]);
 }
