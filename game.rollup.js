@@ -2589,33 +2589,7 @@
     /**
      * @module components/com_render
      */
-    const colored_unlit_vaos = new WeakMap();
     const colored_shaded_vaos = new WeakMap();
-    function render_colored_unlit(material, mesh, color) {
-        return (game, entity) => {
-            if (!colored_unlit_vaos.has(mesh)) {
-                // We only need to create the VAO once.
-                let vao = game.Gl.createVertexArray();
-                game.Gl.bindVertexArray(vao);
-                game.Gl.bindBuffer(GL_ARRAY_BUFFER, mesh.VertexBuffer);
-                game.Gl.enableVertexAttribArray(material.Locations.VertexPosition);
-                game.Gl.vertexAttribPointer(material.Locations.VertexPosition, 3, GL_FLOAT, false, 0, 0);
-                game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.IndexBuffer);
-                game.Gl.bindVertexArray(null);
-                colored_unlit_vaos.set(mesh, vao);
-            }
-            game.World.Signature[entity] |= 128 /* Render */;
-            game.World.Render[entity] = {
-                Kind: 0 /* ColoredUnlit */,
-                Material: material,
-                Mesh: mesh,
-                Phase: color[3] < 1 ? 1 /* Transparent */ : 0 /* Opaque */,
-                FrontFace: GL_CW,
-                Vao: colored_unlit_vaos.get(mesh),
-                Color: color,
-            };
-        };
-    }
     function render_colored_shaded(material, mesh, diffuse_color, shininess = 0, specular_color = [1, 1, 1, 1], front_face = GL_CW) {
         return (game, entity) => {
             if (!colored_shaded_vaos.has(mesh)) {
@@ -2706,86 +2680,6 @@
                 Dirty: true,
             };
         };
-    }
-
-    const wireframes = new Map();
-    function sys_debug(game, delta) {
-        // Prune wireframes corresponding to destroyed entities.
-        for (let [key, wireframe] of wireframes) {
-            if (
-            // If the entity doesn't have TRANSFORM...
-            !(game.World.Signature[wireframe.anchor_entity] & 512 /* Transform */) ||
-                // ...or if it's not the same TRANSFORM.
-                game.World.Transform[wireframe.anchor_entity] !== wireframe.anchor_transform) {
-                game.World.DestroyEntity(wireframe.entity);
-                wireframes.delete(key);
-            }
-        }
-        for (let i = 0; i < game.World.Signature.length; i++) {
-            if (game.World.Signature[i] & 512 /* Transform */) {
-                // Draw colliders first. If the collider's wireframe overlaps
-                // exactly with the transform's wireframe, we want the collider to
-                // take priority.
-                if (game.World.Signature[i] & 4 /* Collide */) {
-                    wireframe_collider(game, i);
-                }
-                // Draw invisible entities.
-                if (!(game.World.Signature[i] & 128 /* Render */)) {
-                    wireframe_invisible(game, i);
-                }
-            }
-        }
-    }
-    function wireframe_invisible(game, entity) {
-        let anchor_transform = game.World.Transform[entity];
-        let wireframe = wireframes.get(anchor_transform);
-        if (!wireframe) {
-            let wireframe_entity = instantiate(game, [
-                transform(),
-                render_colored_unlit(game.MaterialColoredWireframe, game.MeshCube, [1, 0, 1, 1]),
-            ]);
-            let wireframe_transform = game.World.Transform[wireframe_entity];
-            wireframe_transform.World = anchor_transform.World;
-            wireframe_transform.Dirty = false;
-            wireframes.set(anchor_transform, {
-                entity: wireframe_entity,
-                transform: wireframe_transform,
-                anchor_entity: entity,
-                anchor_transform: anchor_transform,
-            });
-        }
-    }
-    function wireframe_collider(game, entity) {
-        let anchor_transform = game.World.Transform[entity];
-        let anchor_collide = game.World.Collide[entity];
-        let wireframe = wireframes.get(anchor_collide);
-        if (!wireframe) {
-            let wireframe_entity = instantiate(game, [
-                transform(anchor_collide.Center, undefined, scale([0, 0, 0], anchor_collide.Half, 2)),
-                render_colored_unlit(game.MaterialColoredWireframe, game.MeshCube, [0, 1, 0, 1]),
-            ]);
-            wireframe = {
-                entity: wireframe_entity,
-                transform: game.World.Transform[wireframe_entity],
-                anchor_entity: entity,
-                anchor_transform: anchor_transform,
-            };
-            wireframes.set(anchor_collide, wireframe);
-        }
-        if (anchor_collide.Dynamic) {
-            wireframe.transform.Translation = anchor_collide.Center;
-            scale(wireframe.transform.Scale, anchor_collide.Half, 2);
-            wireframe.transform.Dirty = true;
-        }
-        let render = game.World.Render[wireframe.entity];
-        if (render.Kind === 0 /* ColoredUnlit */) {
-            if (anchor_collide.Collisions.length > 0) {
-                render.Color[2] = 1;
-            }
-            else {
-                render.Color[2] = 0;
-            }
-        }
     }
 
     /**
@@ -2920,18 +2814,18 @@
             }
         }
     }
+    const current_position = [0, 0, 0];
+    const movement = [0, 0, 0];
     function update$1(game, entity, delta) {
         let transform = game.World.Transform[entity];
         let rigid_body = game.World.RigidBody[entity];
+        get_translation(current_position, transform.World);
         if (rigid_body.Kind === 2 /* Kinematic */) {
-            let current_position = [0, 0, 0];
-            get_translation(current_position, transform.World);
-            let movement = [0, 0, 0];
             subtract(movement, current_position, rigid_body.LastPosition);
             // Compute velocity from this frame's movement.
             scale(rigid_body.VelocityIntegrated, movement, 1 / delta);
-            copy$1(rigid_body.LastPosition, current_position);
         }
+        copy$1(rigid_body.LastPosition, current_position);
     }
 
     /**
@@ -2997,6 +2891,9 @@
             if (!has_collision) {
                 copy$1(rigid_body.VelocityResolved, rigid_body.VelocityIntegrated);
             }
+        }
+        else if (rigid_body.Kind === 2 /* Kinematic */) {
+            copy$1(rigid_body.VelocityResolved, rigid_body.VelocityIntegrated);
         }
     }
 
@@ -3462,9 +3359,6 @@
             sys_collide(this);
             sys_physics_resolve(this);
             sys_transform(this);
-            {
-                sys_debug(this);
-            }
             sys_resize(this);
             sys_camera(this);
             sys_light(this);
@@ -3754,6 +3648,7 @@
                     1,
                 ]),
                 collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
             ]);
         }
     }
