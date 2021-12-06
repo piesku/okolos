@@ -68,25 +68,25 @@ export function scene_stage(game: Game) {
         }
     }
 
-    // // Rubble on the ground.
-    // for (let i = ground_x * ground_z; i < element_count; i++) {
-    //     let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
-    //     from_rotation_translation_scale(
-    //         view,
-    //         from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
-    //         [
-    //             float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-    //             0,
-    //             float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-    //         ],
-    //         [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
-    //     );
+    // Rubble on the ground.
+    for (let i = ground_x * ground_z; i < element_count; i++) {
+        let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
+        from_rotation_translation_scale(
+            view,
+            from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+            [
+                float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+                0,
+                float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+            ],
+            [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
+        );
 
-    //     let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
-    //     color[0] = float(0, 1);
-    //     color[1] = float(0, 1);
-    //     color[2] = float(0, 1);
-    // }
+        let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
+        color[0] = float(0, 1);
+        color[1] = float(0, 1);
+        color[2] = float(0, 1);
+    }
 
     instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices, colors)]);
 
@@ -114,10 +114,17 @@ export function scene_stage(game: Game) {
     //     ]);
     // }
 
-    instantiate(game, [transform([20, 0, -30]), ...blue_kolos1(game)]);
+    instantiate(game, [transform([10, -2, -10]), ...blue_kolos1(game)]);
 
     instantiate(game, [
-        transform([-20, 0, 30], from_euler([0, 0, 0, 1], 0, 180, 0)),
+        transform([-20, -2, 30], from_euler([0, 0, 0, 1], 0, 180, 0)),
+        move(2, 0),
+        ...blue_kolos1(game),
+        control_always([0, 0, 1], null, "walk"),
+    ]);
+
+    instantiate(game, [
+        transform([-20, -2, 100], from_euler([0, 0, 0, 1], 0, 180, 0)),
         move(2, 0),
         ...blue_kolos1(game),
         control_always([0, 0, 1], null, "walk"),

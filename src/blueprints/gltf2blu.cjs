@@ -28,6 +28,8 @@ let create_child = (mesh, translation, rotation, scale, color = [0.33, 0.33, 0.3
     return `
     [
         transform(${vec(translation)}, ${vec(rotation)}, ${vec(scale)}),
+        collide(false, Layer.Terrain, Layer.None),
+        rigid_body(RigidKind.Static),
         render_colored_shaded(
             game.MaterialColoredGouraud,
             game.Mesh${mesh},
@@ -91,11 +93,13 @@ let props = nodes.reduce((acc, node) => {
 }, {});
 
 let result = `\
-import {children} from "../components/com_children.js";
-import {render_colored_shaded} from "../components/com_render.js";
-import {transform} from "../components/com_transform.js";
-import {Game} from "../game.js";
 import {animate} from "../components/com_animate.js";
+import {children} from "../components/com_children.js";
+import {collide} from "../components/com_collide.js";
+import {render_colored_shaded} from "../components/com_render.js";
+import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
+import {transform} from "../components/com_transform.js";
+import {Game, Layer} from "../game.js";
 import {kolos1_anims} from "./animation_blu_kolos1.js";
 
 ${Object.keys(props)
