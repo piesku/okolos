@@ -1,7 +1,3 @@
-/**
- * @module components/com_animate
- */
-
 import {Quat, Vec3} from "../../common/math.js";
 import {Entity} from "../../common/world.js";
 import {Game} from "../game.js";

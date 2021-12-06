@@ -37,10 +37,11 @@ let create_child = (mesh, translation, rotation, scale, color = [0.33, 0.33, 0.3
 };
 
 let create_child_with_children = (name, translation, rotation, scale) => {
+    let anim = animated_parts.includes(name) ? `\nanimate(kolos1_anims.${name})` : "";
     return `
     [
         transform(${vec(translation)}, ${vec(rotation)}, ${vec(scale)}),
-        children(...prop_${name}(game)),
+        children(...prop_${name}(game)), ${anim}
     ]`;
 };
 
@@ -58,6 +59,7 @@ let nodes = gltf.nodes;
 // }, {});
 
 let blueprint_elements = [];
+let animated_parts = ["body", "left_hand", "right_hand", "left_leg", "right_leg"];
 
 let props = nodes.reduce((acc, node) => {
     if (node.name.includes(".")) {
@@ -74,7 +76,7 @@ let props = nodes.reduce((acc, node) => {
                 node.scale && node.scale.map((e) => e * 2)
             )
         );
-    } else {
+    } else if (node.name !== "root") {
         // blueprint
         blueprint_elements.push(
             create_child_with_children(
@@ -93,6 +95,8 @@ import {children} from "../components/com_children.js";
 import {render_colored_shaded} from "../components/com_render.js";
 import {transform} from "../components/com_transform.js";
 import {Game} from "../game.js";
+import {animate} from "../components/com_animate.js";
+import {kolos1_anims} from "./animation_blu_kolos1.js";
 
 ${Object.keys(props)
     .map((name) => {
