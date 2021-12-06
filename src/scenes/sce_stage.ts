@@ -1,12 +1,12 @@
 import {instantiate} from "../../common/game.js";
 import {from_rotation_translation_scale} from "../../common/mat4.js";
-import {from_euler} from "../../common/quat.js";
 import {float, set_seed} from "../../common/random.js";
 import {blueprint_camera} from "../blueprints/blu_camera.js";
+import {blue_kolos1} from "../blueprints/blu_kolos1.js";
 import {blueprint_viewer} from "../blueprints/blu_viewer.js";
 import {collide} from "../components/com_collide.js";
 import {light_directional} from "../components/com_light.js";
-import {render_colored_shaded, render_instanced} from "../components/com_render.js";
+import {render_instanced} from "../components/com_render.js";
 import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
 import {transform} from "../components/com_transform.js";
 import {Game, Layer} from "../game.js";
@@ -65,49 +65,51 @@ export function scene_stage(game: Game) {
         }
     }
 
-    // Rubble on the ground.
-    for (let i = ground_x * ground_z; i < element_count; i++) {
-        let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
-        from_rotation_translation_scale(
-            view,
-            from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
-            [
-                float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-                0,
-                float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-            ],
-            [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
-        );
+    // // Rubble on the ground.
+    // for (let i = ground_x * ground_z; i < element_count; i++) {
+    //     let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
+    //     from_rotation_translation_scale(
+    //         view,
+    //         from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+    //         [
+    //             float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+    //             0,
+    //             float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+    //         ],
+    //         [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
+    //     );
 
-        let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
-        color[0] = float(0, 1);
-        color[1] = float(0, 1);
-        color[2] = float(0, 1);
-    }
+    //     let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
+    //     color[0] = float(0, 1);
+    //     color[1] = float(0, 1);
+    //     color[2] = float(0, 1);
+    // }
 
     instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices, colors)]);
 
-    // Floating boxes.
-    for (let i = 0; i < floating_count; i++) {
-        let s = float(5, 10);
-        instantiate(game, [
-            transform(
-                [
-                    float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-                    float(3, 25),
-                    float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-                ],
-                from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
-                [s, s, s]
-            ),
-            render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
-                float(0, 1),
-                float(0, 1),
-                float(0, 1),
-                1,
-            ]),
-            collide(false, Layer.Terrain, Layer.None),
-            rigid_body(RigidKind.Static),
-        ]);
-    }
+    // // Floating boxes.
+    // for (let i = 0; i < floating_count; i++) {
+    //     let s = float(5, 10);
+    //     instantiate(game, [
+    //         transform(
+    //             [
+    //                 float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+    //                 float(3, 25),
+    //                 float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+    //             ],
+    //             from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+    //             [s, s, s]
+    //         ),
+    //         render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
+    //             float(0, 1),
+    //             float(0, 1),
+    //             float(0, 1),
+    //             1,
+    //         ]),
+    //         collide(false, Layer.Terrain, Layer.None),
+    //         rigid_body(RigidKind.Static),
+    //     ]);
+    // }
+
+    instantiate(game, [transform([20, 0, -30]), ...blue_kolos1(game)]);
 }
