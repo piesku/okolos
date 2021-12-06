@@ -107,6 +107,7 @@ export function scene_stage(game: Game) {
                 1,
             ]),
             collide(false, Layer.Terrain, Layer.None),
+            rigid_body(RigidKind.Static),
         ]);
     }
 }
