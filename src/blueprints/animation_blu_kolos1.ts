@@ -1,15 +1,17 @@
 import {from_euler} from "../../common/quat.js";
 
+let speed = 4;
+
 export const kolos1_anims = {
     body: {
         idle: {
             Keyframes: [
                 {
-                    Timestamp: 0.0,
+                    Timestamp: speed * 0.0,
                     Rotation: from_euler([0, 0, 0, 1], 0, 5, 0),
                 },
                 {
-                    Timestamp: 0.5,
+                    Timestamp: speed * 0.5,
                     Rotation: from_euler([0, 0, 0, 1], 0, -5, 0),
                 },
             ],
@@ -17,11 +19,11 @@ export const kolos1_anims = {
         walk: {
             Keyframes: [
                 {
-                    Timestamp: 0.0,
+                    Timestamp: speed * 0.0,
                     Rotation: from_euler([0, 0, 0, 1], 0, 5, 0),
                 },
                 {
-                    Timestamp: 0.2,
+                    Timestamp: speed * 0.2,
                     Rotation: from_euler([0, 0, 0, 1], 0, -5, 0),
                 },
             ],
@@ -31,11 +33,11 @@ export const kolos1_anims = {
         idle: {
             Keyframes: [
                 {
-                    Timestamp: 0,
+                    Timestamp: speed * 0,
                     Rotation: from_euler([0, 0, 0, 1], 5, 0, 0),
                 },
                 {
-                    Timestamp: 0.5,
+                    Timestamp: speed * 0.5,
                     Rotation: from_euler([0, 0, 0, 1], -5, 0, 0),
                 },
             ],
@@ -43,11 +45,11 @@ export const kolos1_anims = {
         walk: {
             Keyframes: [
                 {
-                    Timestamp: 0,
+                    Timestamp: speed * 0,
                     Rotation: from_euler([0, 0, 0, 1], 30, 0, 0),
                 },
                 {
-                    Timestamp: 0.2,
+                    Timestamp: speed * 0.2,
                     Rotation: from_euler([0, 0, 0, 1], -60, 0, 0),
                 },
             ],
@@ -57,11 +59,11 @@ export const kolos1_anims = {
         idle: {
             Keyframes: [
                 {
-                    Timestamp: 0,
+                    Timestamp: speed * 0,
                     Rotation: from_euler([0, 0, 0, 1], -5, 0, 0),
                 },
                 {
-                    Timestamp: 0.5,
+                    Timestamp: speed * 0.5,
                     Rotation: from_euler([0, 0, 0, 1], 5, 0, 0),
                 },
             ],
@@ -69,11 +71,11 @@ export const kolos1_anims = {
         walk: {
             Keyframes: [
                 {
-                    Timestamp: 0,
+                    Timestamp: speed * 0,
                     Rotation: from_euler([0, 0, 0, 1], -60, 0, 0),
                 },
                 {
-                    Timestamp: 0.2,
+                    Timestamp: speed * 0.2,
                     Rotation: from_euler([0, 0, 0, 1], 30, 0, 0),
                 },
             ],
@@ -84,11 +86,11 @@ export const kolos1_anims = {
         idle: {
             Keyframes: [
                 {
-                    Timestamp: 0,
+                    Timestamp: speed * 0,
                     Rotation: from_euler([0, 0, 0, 1], 5, 0, 0),
                 },
                 {
-                    Timestamp: 1,
+                    Timestamp: speed * 1,
                     Rotation: from_euler([0, 0, 0, 1], 5, 0, 0),
                 },
             ],
@@ -96,11 +98,11 @@ export const kolos1_anims = {
         walk: {
             Keyframes: [
                 {
-                    Timestamp: 0,
+                    Timestamp: speed * 0,
                     Rotation: from_euler([0, 0, 0, 1], -45, 0, 0),
                 },
                 {
-                    Timestamp: 0.2,
+                    Timestamp: speed * 0.2,
                     Rotation: from_euler([0, 0, 0, 1], 45, 0, 0),
                 },
             ],
@@ -110,11 +112,11 @@ export const kolos1_anims = {
         idle: {
             Keyframes: [
                 {
-                    Timestamp: 0,
+                    Timestamp: speed * 0,
                     Rotation: from_euler([0, 0, 0, 1], -5, 0, 0),
                 },
                 {
-                    Timestamp: 1,
+                    Timestamp: speed * 1,
                     Rotation: from_euler([0, 0, 0, 1], -5, 0, 0),
                 },
             ],
@@ -122,11 +124,11 @@ export const kolos1_anims = {
         walk: {
             Keyframes: [
                 {
-                    Timestamp: 0,
+                    Timestamp: speed * 0,
                     Rotation: from_euler([0, 0, 0, 1], 45, 0, 0),
                 },
                 {
-                    Timestamp: 0.2,
+                    Timestamp: speed * 0.2,
                     Rotation: from_euler([0, 0, 0, 1], -45, 0, 0),
                 },
             ],

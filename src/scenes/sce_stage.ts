@@ -5,6 +5,7 @@ import {blueprint_camera} from "../blueprints/blu_camera.js";
 import {blue_kolos1} from "../blueprints/blu_kolos1.js";
 import {blueprint_viewer} from "../blueprints/blu_viewer.js";
 import {collide} from "../components/com_collide.js";
+import {control_always} from "../components/com_control_always.js";
 import {light_directional} from "../components/com_light.js";
 import {render_instanced} from "../components/com_render.js";
 import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
@@ -111,5 +112,9 @@ export function scene_stage(game: Game) {
     //     ]);
     // }
 
-    instantiate(game, [transform([20, 0, -30]), ...blue_kolos1(game)]);
+    instantiate(game, [
+        transform([20, 0, -30]),
+        ...blue_kolos1(game),
+        control_always(null, null, "walk"),
+    ]);
 }
