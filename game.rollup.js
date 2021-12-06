@@ -1752,6 +1752,13 @@
         2, 1, 0
     ]);
 
+    const EPSILON = 0.000001;
+    const DEG_TO_RAD = Math.PI / 180;
+
+    function map_range(value, old_min, old_max, new_min, new_max) {
+        return ((value - old_min) / (old_max - old_min)) * (new_max - new_min) + new_min;
+    }
+
     function set$1(out, x, y, z) {
         out[0] = x;
         out[1] = y;
@@ -1830,6 +1837,199 @@
         let z = a[2];
         return Math.hypot(x, y, z);
     }
+    function lerp(out, a, b, t) {
+        let ax = a[0];
+        let ay = a[1];
+        let az = a[2];
+        out[0] = ax + t * (b[0] - ax);
+        out[1] = ay + t * (b[1] - ay);
+        out[2] = az + t * (b[2] - az);
+        return out;
+    }
+
+    function set(out, x, y, z, w) {
+        out[0] = x;
+        out[1] = y;
+        out[2] = z;
+        out[3] = w;
+        return out;
+    }
+    function multiply$1(out, a, b) {
+        let ax = a[0], ay = a[1], az = a[2], aw = a[3];
+        let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+        out[0] = ax * bw + aw * bx + ay * bz - az * by;
+        out[1] = ay * bw + aw * by + az * bx - ax * bz;
+        out[2] = az * bw + aw * bz + ax * by - ay * bx;
+        out[3] = aw * bw - ax * bx - ay * by - az * bz;
+        return out;
+    }
+    /**
+     * Compute a quaternion out of three Euler angles given in degrees. The order of rotation is YXZ.
+     * @param out Quaternion to write to.
+     * @param x Rotation about the X axis, in degrees.
+     * @param y Rotation around the Y axis, in degress.
+     * @param z Rotation around the Z axis, in degress.
+     */
+    function from_euler(out, x, y, z) {
+        let sx = Math.sin((x / 2) * DEG_TO_RAD);
+        let cx = Math.cos((x / 2) * DEG_TO_RAD);
+        let sy = Math.sin((y / 2) * DEG_TO_RAD);
+        let cy = Math.cos((y / 2) * DEG_TO_RAD);
+        let sz = Math.sin((z / 2) * DEG_TO_RAD);
+        let cz = Math.cos((z / 2) * DEG_TO_RAD);
+        out[0] = sx * cy * cz + cx * sy * sz;
+        out[1] = cx * sy * cz - sx * cy * sz;
+        out[2] = cx * cy * sz - sx * sy * cz;
+        out[3] = cx * cy * cz + sx * sy * sz;
+        return out;
+    }
+    /**
+     * Compute a quaternion from an axis and an angle of rotation around the axis.
+     * @param out Quaternion to write to.
+     * @param axis Axis of rotation.
+     * @param angle Rotation in radians.
+     */
+    function from_axis(out, axis, angle) {
+        let half = angle / 2;
+        out[0] = Math.sin(half) * axis[0];
+        out[1] = Math.sin(half) * axis[1];
+        out[2] = Math.sin(half) * axis[2];
+        out[3] = Math.cos(half);
+        return out;
+    }
+    /**
+     * Performs a spherical linear interpolation between two quat
+     *
+     * @param out - the receiving quaternion
+     * @param a - the first operand
+     * @param b - the second operand
+     * @param t - interpolation amount, in the range [0-1], between the two inputs
+     */
+    function slerp(out, a, b, t) {
+        // benchmarks:
+        //    http://jsperf.com/quaternion-slerp-implementations
+        let ax = a[0], ay = a[1], az = a[2], aw = a[3];
+        let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+        let omega, cosom, sinom, scale0, scale1;
+        // calc cosine
+        cosom = ax * bx + ay * by + az * bz + aw * bw;
+        // adjust signs (if necessary)
+        if (cosom < 0.0) {
+            cosom = -cosom;
+            bx = -bx;
+            by = -by;
+            bz = -bz;
+            bw = -bw;
+        }
+        // calculate coefficients
+        if (1.0 - cosom > EPSILON) {
+            // standard case (slerp)
+            omega = Math.acos(cosom);
+            sinom = Math.sin(omega);
+            scale0 = Math.sin((1.0 - t) * omega) / sinom;
+            scale1 = Math.sin(t * omega) / sinom;
+        }
+        else {
+            // "from" and "to" quaternions are very close
+            //  ... so we can do a linear interpolation
+            scale0 = 1.0 - t;
+            scale1 = t;
+        }
+        // calculate final values
+        out[0] = scale0 * ax + scale1 * bx;
+        out[1] = scale0 * ay + scale1 * by;
+        out[2] = scale0 * az + scale1 * bz;
+        out[3] = scale0 * aw + scale1 * bw;
+        return out;
+    }
+
+    /**
+     * @module systems/sys_animate
+     */
+    const QUERY$d = 2048 /* Transform */ | 1 /* Animate */;
+    function sys_animate(game, delta) {
+        for (let i = 0; i < game.World.Signature.length; i++) {
+            if ((game.World.Signature[i] & QUERY$d) === QUERY$d) {
+                update$9(game, i, delta);
+            }
+        }
+    }
+    function update$9(game, entity, delta) {
+        let transform = game.World.Transform[entity];
+        let animate = game.World.Animate[entity];
+        // 1. Switch to the trigger if the clip has completed or early exits are allowed.
+        if (animate.Trigger) {
+            let next = animate.States[animate.Trigger];
+            if (next && next !== animate.Current) {
+                if (animate.Current.Time === 0) {
+                    // If the current clip has completed last frame, switch to the trigger.
+                    animate.Current = next;
+                }
+                else if (animate.Current.Flags & 1 /* EarlyExit */) {
+                    // If the current clip allows early exits, reset its timer so
+                    // that the next time it plays it starts from the beginning,
+                    // and then switch to the trigger.
+                    animate.Current.Time = 0;
+                    animate.Current = next;
+                }
+            }
+            animate.Trigger = undefined;
+        }
+        // 2. Find the current and the next keyframe.
+        let current_keyframe = null;
+        let next_keyframe = null;
+        for (let keyframe of animate.Current.Keyframes) {
+            if (animate.Current.Time < keyframe.Timestamp) {
+                next_keyframe = keyframe;
+                break;
+            }
+            else {
+                current_keyframe = keyframe;
+            }
+        }
+        // 3. Interpolate transform properties between keyframes.
+        if (current_keyframe && next_keyframe) {
+            let keyframe_duration = next_keyframe.Timestamp - current_keyframe.Timestamp;
+            let current_keyframe_time = animate.Current.Time - current_keyframe.Timestamp;
+            let interpolant = current_keyframe_time / keyframe_duration;
+            if (next_keyframe.Ease) {
+                interpolant = next_keyframe.Ease(interpolant);
+            }
+            if (current_keyframe.Translation && next_keyframe.Translation) {
+                lerp(transform.Translation, current_keyframe.Translation, next_keyframe.Translation, interpolant);
+                transform.Dirty = true;
+            }
+            if (current_keyframe.Rotation && next_keyframe.Rotation) {
+                slerp(transform.Rotation, current_keyframe.Rotation, next_keyframe.Rotation, interpolant);
+                transform.Dirty = true;
+            }
+            if (current_keyframe.Scale && next_keyframe.Scale) {
+                lerp(transform.Scale, current_keyframe.Scale, next_keyframe.Scale, interpolant);
+                transform.Dirty = true;
+            }
+        }
+        // 4. Check if the animation is still running.
+        let new_time = animate.Current.Time + delta;
+        if (new_time < animate.Current.Duration) {
+            // The animation isn't done yet; continue.
+            animate.Current.Time = new_time;
+            return;
+        }
+        else {
+            // The animation has completed; reset its timer.
+            animate.Current.Time = 0;
+        }
+        // 5. The animation has completed. Loop it or switch to idle.
+        if (animate.Current.Flags & 4 /* Alternate */) {
+            // Reverse the keyframes of the clip and recalculate their timestamps.
+            for (let keyframe of animate.Current.Keyframes.reverse()) {
+                keyframe.Timestamp = animate.Current.Duration - keyframe.Timestamp;
+            }
+        }
+        if (!(animate.Current.Flags & 2 /* Loop */)) {
+            animate.Current = animate.States["idle"];
+        }
+    }
 
     function create() {
         return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -1893,7 +2093,7 @@
         out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
         return out;
     }
-    function multiply$1(out, a, b) {
+    function multiply(out, a, b) {
         let a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
         let a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
         let a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
@@ -2017,11 +2217,11 @@
         invert(projection.Inverse, projection.Projection);
     }
 
-    const QUERY$b = 512 /* Transform */ | 1 /* Camera */;
+    const QUERY$c = 2048 /* Transform */ | 2 /* Camera */;
     function sys_camera(game, delta) {
         game.Cameras = [];
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$b) === QUERY$b) {
+            if ((game.World.Signature[i] & QUERY$c) === QUERY$c) {
                 let camera = game.World.Camera[i];
                 if (camera.Kind === 1 /* Xr */ && game.XrFrame) {
                     game.Cameras.push(i);
@@ -2050,7 +2250,7 @@
         }
         let transform = game.World.Transform[entity];
         copy(camera.View, transform.Self);
-        multiply$1(camera.Pv, camera.Projection.Projection, camera.View);
+        multiply(camera.Pv, camera.Projection.Projection, camera.View);
         get_translation(camera.Position, transform.World);
     }
     function update_xr(game, entity, camera) {
@@ -2065,12 +2265,12 @@
                 Position: [0, 0, 0],
             };
             // Compute the eye's world matrix.
-            multiply$1(eye.View, transform.World, viewpoint.transform.matrix);
+            multiply(eye.View, transform.World, viewpoint.transform.matrix);
             get_translation(eye.Position, eye.View);
             // Compute the view matrix.
             invert(eye.View, eye.View);
             // Compute the PV matrix.
-            multiply$1(eye.Pv, viewpoint.projectionMatrix, eye.View);
+            multiply(eye.Pv, viewpoint.projectionMatrix, eye.View);
             camera.Eyes.push(eye);
         }
     }
@@ -2162,13 +2362,13 @@
     /**
      * @module systems/sys_collide
      */
-    const QUERY$a = 512 /* Transform */ | 4 /* Collide */;
+    const QUERY$b = 2048 /* Transform */ | 8 /* Collide */;
     function sys_collide(game, delta) {
         // Collect all colliders.
         let static_colliders = [];
         let dynamic_colliders = [];
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$a) === QUERY$a) {
+            if ((game.World.Signature[i] & QUERY$b) === QUERY$b) {
                 let transform = game.World.Transform[i];
                 let collider = game.World.Collide[i];
                 // Prepare the collider for this tick's detection.
@@ -2229,110 +2429,66 @@
         }
     }
 
-    function map_range(value, old_min, old_max, new_min, new_max) {
-        return ((value - old_min) / (old_max - old_min)) * (new_max - new_min) + new_min;
-    }
-
-    const EPSILON = 0.000001;
-    const DEG_TO_RAD = Math.PI / 180;
-
-    function set(out, x, y, z, w) {
-        out[0] = x;
-        out[1] = y;
-        out[2] = z;
-        out[3] = w;
-        return out;
-    }
-    function multiply(out, a, b) {
-        let ax = a[0], ay = a[1], az = a[2], aw = a[3];
-        let bx = b[0], by = b[1], bz = b[2], bw = b[3];
-        out[0] = ax * bw + aw * bx + ay * bz - az * by;
-        out[1] = ay * bw + aw * by + az * bx - ax * bz;
-        out[2] = az * bw + aw * bz + ax * by - ay * bx;
-        out[3] = aw * bw - ax * bx - ay * by - az * bz;
-        return out;
-    }
     /**
-     * Compute a quaternion out of three Euler angles given in degrees. The order of rotation is YXZ.
-     * @param out Quaternion to write to.
-     * @param x Rotation about the X axis, in degrees.
-     * @param y Rotation around the Y axis, in degress.
-     * @param z Rotation around the Z axis, in degress.
+     * @module components/com_children
      */
-    function from_euler(out, x, y, z) {
-        let sx = Math.sin((x / 2) * DEG_TO_RAD);
-        let cx = Math.cos((x / 2) * DEG_TO_RAD);
-        let sy = Math.sin((y / 2) * DEG_TO_RAD);
-        let cy = Math.cos((y / 2) * DEG_TO_RAD);
-        let sz = Math.sin((z / 2) * DEG_TO_RAD);
-        let cz = Math.cos((z / 2) * DEG_TO_RAD);
-        out[0] = sx * cy * cz + cx * sy * sz;
-        out[1] = cx * sy * cz - sx * cy * sz;
-        out[2] = cx * cy * sz - sx * sy * cz;
-        out[3] = cx * cy * cz + sx * sy * sz;
-        return out;
+    function children(...blueprints) {
+        return (game, entity) => {
+            let child_entities = [];
+            for (let blueprint of blueprints) {
+                let child = instantiate(game, blueprint);
+                child_entities.push(child);
+            }
+            game.World.Signature[entity] |= 4 /* Children */;
+            game.World.Children[entity] = {
+                Children: child_entities,
+            };
+        };
     }
     /**
-     * Compute a quaternion from an axis and an angle of rotation around the axis.
-     * @param out Quaternion to write to.
-     * @param axis Axis of rotation.
-     * @param angle Rotation in radians.
-     */
-    function from_axis(out, axis, angle) {
-        let half = angle / 2;
-        out[0] = Math.sin(half) * axis[0];
-        out[1] = Math.sin(half) * axis[1];
-        out[2] = Math.sin(half) * axis[2];
-        out[3] = Math.cos(half);
-        return out;
-    }
-    /**
-     * Performs a spherical linear interpolation between two quat
+     * Yield descendants matching a component mask. Start at the current entity.
      *
-     * @param out - the receiving quaternion
-     * @param a - the first operand
-     * @param b - the second operand
-     * @param t - interpolation amount, in the range [0-1], between the two inputs
+     * @param world World object which stores the component data.
+     * @param entity Parent entity to traverse.
+     * @param mask Component mask to look for.
      */
-    function slerp(out, a, b, t) {
-        // benchmarks:
-        //    http://jsperf.com/quaternion-slerp-implementations
-        let ax = a[0], ay = a[1], az = a[2], aw = a[3];
-        let bx = b[0], by = b[1], bz = b[2], bw = b[3];
-        let omega, cosom, sinom, scale0, scale1;
-        // calc cosine
-        cosom = ax * bx + ay * by + az * bz + aw * bw;
-        // adjust signs (if necessary)
-        if (cosom < 0.0) {
-            cosom = -cosom;
-            bx = -bx;
-            by = -by;
-            bz = -bz;
-            bw = -bw;
+    function* query_down(world, entity, mask) {
+        if ((world.Signature[entity] & mask) === mask) {
+            yield entity;
         }
-        // calculate coefficients
-        if (1.0 - cosom > EPSILON) {
-            // standard case (slerp)
-            omega = Math.acos(cosom);
-            sinom = Math.sin(omega);
-            scale0 = Math.sin((1.0 - t) * omega) / sinom;
-            scale1 = Math.sin(t * omega) / sinom;
+        if (world.Signature[entity] & 4 /* Children */) {
+            for (let child of world.Children[entity].Children) {
+                yield* query_down(world, child, mask);
+            }
         }
-        else {
-            // "from" and "to" quaternions are very close
-            //  ... so we can do a linear interpolation
-            scale0 = 1.0 - t;
-            scale1 = t;
-        }
-        // calculate final values
-        out[0] = scale0 * ax + scale1 * bx;
-        out[1] = scale0 * ay + scale1 * by;
-        out[2] = scale0 * az + scale1 * bz;
-        out[3] = scale0 * aw + scale1 * bw;
-        return out;
     }
 
-    const QUERY$9 = 512 /* Transform */ | 16 /* ControlXr */;
+    const QUERY$a = 32 /* ControlAlways */ | 2048 /* Transform */;
+    function sys_control_always(game, delta) {
+        for (let i = 0; i < game.World.Signature.length; i++) {
+            if ((game.World.Signature[i] & QUERY$a) === QUERY$a) {
+                update$8(game, i);
+            }
+        }
+    }
+    function update$8(game, entity) {
+        let control = game.World.ControlAlways[entity];
+        let move = game.World.Move[entity];
+        if (control.Direction) {
+            move.Direction = control.Direction.slice();
+        }
+        if (control.Rotation) {
+            move.LocalRotation = control.Rotation.slice();
+        }
+        if (control.AnimationClip) {
+            for (let ent of query_down(game.World, entity, 1 /* Animate */)) {
+                let animate = game.World.Animate[ent];
+                animate.Trigger = control.AnimationClip;
+            }
+        }
+    }
+
+    const QUERY$9 = 2048 /* Transform */ | 64 /* ControlXr */;
     const AXIS_Y$1 = [0, 1, 0];
     function sys_control_oculus(game, delta) {
         if (!game.XrFrame) {
@@ -2389,7 +2545,7 @@
         }
     }
 
-    const QUERY$8 = 512 /* Transform */ | 8 /* ControlPlayer */;
+    const QUERY$8 = 2048 /* Transform */ | 16 /* ControlPlayer */;
     function sys_control_player(game, delta) {
         if (!game.XrFrame) {
             return;
@@ -2457,7 +2613,7 @@
                 if (axis_rotate) {
                     let amount = axis_rotate * Math.PI;
                     let rotation = from_axis([0, 0, 0, 1], AXIS_Y, amount);
-                    multiply(move.LocalRotation, move.LocalRotation, rotation);
+                    multiply$1(move.LocalRotation, move.LocalRotation, rotation);
                 }
             }
             let left_hand_entity = bob_children.Children[2];
@@ -2522,7 +2678,7 @@
         }
     }
 
-    const QUERY$7 = 512 /* Transform */ | 16 /* ControlXr */;
+    const QUERY$7 = 2048 /* Transform */ | 64 /* ControlXr */;
     function sys_control_pose(game, delta) {
         if (!game.XrFrame) {
             return;
@@ -2606,7 +2762,7 @@
                 game.Gl.bindVertexArray(null);
                 colored_shaded_vaos.set(mesh, vao);
             }
-            game.World.Signature[entity] |= 128 /* Render */;
+            game.World.Signature[entity] |= 512 /* Render */;
             game.World.Render[entity] = {
                 Kind: 1 /* ColoredShaded */,
                 Material: material,
@@ -2651,7 +2807,7 @@
             game.Gl.vertexAttribDivisor(material.Locations.InstanceColor, 1);
             game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.IndexBuffer);
             game.Gl.bindVertexArray(null);
-            game.World.Signature[entity] |= 128 /* Render */;
+            game.World.Signature[entity] |= 512 /* Render */;
             game.World.Render[entity] = {
                 Kind: 8 /* Instanced */,
                 Material: material,
@@ -2670,7 +2826,7 @@
      */
     function transform(translation = [0, 0, 0], rotation = [0, 0, 0, 1], scale = [1, 1, 1]) {
         return (game, entity) => {
-            game.World.Signature[entity] |= 512 /* Transform */;
+            game.World.Signature[entity] |= 2048 /* Transform */;
             game.World.Transform[entity] = {
                 World: create(),
                 Self: create(),
@@ -2685,7 +2841,7 @@
     /**
      * @module systems/sys_light
      */
-    const QUERY$6 = 512 /* Transform */ | 32 /* Light */;
+    const QUERY$6 = 2048 /* Transform */ | 128 /* Light */;
     function sys_light(game, delta) {
         game.LightPositions.fill(0);
         game.LightDetails.fill(0);
@@ -2719,7 +2875,7 @@
     /**
      * @module systems/sys_move
      */
-    const QUERY$5 = 512 /* Transform */ | 64 /* Move */;
+    const QUERY$5 = 2048 /* Transform */ | 256 /* Move */;
     const NO_ROTATION = [0, 0, 0, 1];
     function sys_move(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
@@ -2757,7 +2913,7 @@
             let t = Math.min(1, (move.RotationSpeed / Math.PI) * delta);
             slerp(move.LocalRotation, NO_ROTATION, move.LocalRotation, t);
             // Pre-multiply.
-            multiply(transform.Rotation, move.LocalRotation, transform.Rotation);
+            multiply$1(transform.Rotation, move.LocalRotation, transform.Rotation);
             transform.Dirty = true;
             set(move.LocalRotation, 0, 0, 0, 1);
         }
@@ -2766,7 +2922,7 @@
             let t = Math.min(1, (move.RotationSpeed / Math.PI) * delta);
             slerp(move.SelfRotation, NO_ROTATION, move.SelfRotation, t);
             // Post-multiply.
-            multiply(transform.Rotation, transform.Rotation, move.SelfRotation);
+            multiply$1(transform.Rotation, transform.Rotation, move.SelfRotation);
             transform.Dirty = true;
             set(move.SelfRotation, 0, 0, 0, 1);
         }
@@ -2775,7 +2931,7 @@
     /**
      * @module systems/sys_physics_integrate
      */
-    const QUERY$4 = 512 /* Transform */ | 256 /* RigidBody */;
+    const QUERY$4 = 2048 /* Transform */ | 1024 /* RigidBody */;
     const GRAVITY = -9.81;
     function sys_physics_integrate(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
@@ -2806,7 +2962,7 @@
     /**
      * @module systems/sys_physics_kinematic
      */
-    const QUERY$3 = 512 /* Transform */ | 256 /* RigidBody */;
+    const QUERY$3 = 2048 /* Transform */ | 1024 /* RigidBody */;
     function sys_physics_kinematic(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
             if ((game.World.Signature[i] & QUERY$3) === QUERY$3) {
@@ -2831,7 +2987,7 @@
     /**
      * @module systems/sys_physics_resolve
      */
-    const QUERY$2 = 512 /* Transform */ | 4 /* Collide */ | 256 /* RigidBody */;
+    const QUERY$2 = 2048 /* Transform */ | 8 /* Collide */ | 1024 /* RigidBody */;
     function sys_physics_resolve(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
             if ((game.World.Signature[i] & QUERY$2) === QUERY$2) {
@@ -2850,7 +3006,7 @@
             let has_collision = false;
             for (let i = 0; i < collide.Collisions.length; i++) {
                 let collision = collide.Collisions[i];
-                if (game.World.Signature[collision.Other] & 256 /* RigidBody */) {
+                if (game.World.Signature[collision.Other] & 1024 /* RigidBody */) {
                     has_collision = true;
                     // Dynamic rigid bodies are only supported for top-level
                     // entities. Thus, no need to apply the world → self → local
@@ -2900,7 +3056,7 @@
     /**
      * @module systems/sys_render_forward
      */
-    const QUERY$1 = 512 /* Transform */ | 128 /* Render */;
+    const QUERY$1 = 2048 /* Transform */ | 512 /* Render */;
     function sys_render_forward(game, delta) {
         for (let camera_entity of game.Cameras) {
             let camera = game.World.Camera[camera_entity];
@@ -3122,7 +3278,7 @@
         }
     }
 
-    const QUERY = 512 /* Transform */;
+    const QUERY = 2048 /* Transform */;
     function sys_transform(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
             if ((game.World.Signature[i] & QUERY) === QUERY) {
@@ -3138,13 +3294,13 @@
         from_rotation_translation_scale(transform.World, transform.Rotation, transform.Translation, transform.Scale);
         if (transform.Parent !== undefined) {
             let parent_transform = game.World.Transform[transform.Parent];
-            multiply$1(transform.World, parent_transform.World, transform.World);
+            multiply(transform.World, parent_transform.World, transform.World);
         }
         invert(transform.Self, transform.World);
-        if (game.World.Signature[entity] & 2 /* Children */) {
+        if (game.World.Signature[entity] & 4 /* Children */) {
             let children = game.World.Children[entity];
             for (let child of children.Children) {
-                if (game.World.Signature[child] & 512 /* Transform */) {
+                if (game.World.Signature[child] & 2048 /* Transform */) {
                     let child_transform = game.World.Transform[child];
                     child_transform.Parent = entity;
                     update_transform(game, child, child_transform);
@@ -3267,9 +3423,11 @@
     class World extends WorldImpl {
         constructor() {
             super(...arguments);
+            this.Animate = [];
             this.Camera = [];
             this.Children = [];
             this.Collide = [];
+            this.ControlAlways = [];
             this.ControlPlayer = [];
             this.ControlXr = [];
             this.Light = [];
@@ -3350,7 +3508,9 @@
             sys_control_pose(this);
             sys_control_oculus(this);
             sys_control_player(this);
+            sys_control_always(this);
             // Game logic.
+            sys_animate(this, delta);
             sys_move(this, delta);
             // Physics and collisions.
             sys_physics_integrate(this, delta);
@@ -3381,7 +3541,7 @@
 
     function camera_forward_perspective(fovy, near, far) {
         return (game, entity) => {
-            game.World.Signature[entity] |= 1 /* Camera */;
+            game.World.Signature[entity] |= 2 /* Camera */;
             game.World.Camera[entity] = {
                 Kind: 0 /* Forward */,
                 Projection: {
@@ -3400,27 +3560,10 @@
     }
     function camera_xr() {
         return (game, entity) => {
-            game.World.Signature[entity] |= 1 /* Camera */;
+            game.World.Signature[entity] |= 2 /* Camera */;
             game.World.Camera[entity] = {
                 Kind: 1 /* Xr */,
                 Eyes: [],
-            };
-        };
-    }
-
-    /**
-     * @module components/com_children
-     */
-    function children(...blueprints) {
-        return (game, entity) => {
-            let child_entities = [];
-            for (let blueprint of blueprints) {
-                let child = instantiate(game, blueprint);
-                child_entities.push(child);
-            }
-            game.World.Signature[entity] |= 2 /* Children */;
-            game.World.Children[entity] = {
-                Children: child_entities,
             };
         };
     }
@@ -3429,6 +3572,32 @@
         return [
             children([transform(undefined, [0, 1, 0, 0]), camera_forward_perspective(1, 0.1, 1000)]),
         ];
+    }
+
+    function animate(clips) {
+        return (game, entity) => {
+            let States = {};
+            for (let name in clips) {
+                let { Keyframes, Flags = 7 /* Default */ } = clips[name];
+                let duration = Keyframes[Keyframes.length - 1].Timestamp;
+                States[name] = {
+                    // One-level-deep copy of the clip's keyframes. When
+                    // AnimationFlag.Alternate is set, sys_animate recalculates
+                    // keyframes' timestamps after each alternation. We want to
+                    // modify copies of the timestamps defined in the clip. It's OK
+                    // to copy other keyframe properties by reference.
+                    Keyframes: Keyframes.map((keyframe) => ({ ...keyframe })),
+                    Flags,
+                    Duration: duration,
+                    Time: 0,
+                };
+            }
+            game.World.Signature[entity] |= 1 /* Animate */;
+            game.World.Animate[entity] = {
+                States,
+                Current: States["idle"],
+            };
+        };
     }
 
     /**
@@ -3445,7 +3614,7 @@
      */
     function collide(dynamic, layers, mask, size = [1, 1, 1]) {
         return (game, entity) => {
-            game.World.Signature[entity] |= 4 /* Collide */;
+            game.World.Signature[entity] |= 8 /* Collide */;
             game.World.Collide[entity] = {
                 EntityId: entity,
                 New: true,
@@ -3462,9 +3631,307 @@
         };
     }
 
+    /**
+     * @module components/com_rigid_body
+     */
+    function rigid_body(kind, bounciness = 0.5) {
+        return (game, entity) => {
+            game.World.Signature[entity] |= 1024 /* RigidBody */;
+            game.World.RigidBody[entity] = {
+                Kind: kind,
+                Bounciness: bounciness,
+                Acceleration: [0, 0, 0],
+                VelocityIntegrated: [0, 0, 0],
+                VelocityResolved: [0, 0, 0],
+                LastPosition: [0, 0, 0],
+                IsAirborne: false,
+            };
+        };
+    }
+
+    let speed = 8;
+    const kolos1_anims = {
+        body: {
+            idle: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0.0,
+                        Rotation: from_euler([0, 0, 0, 1], 0, 5, 0),
+                    },
+                    {
+                        Timestamp: speed * 0.5,
+                        Rotation: from_euler([0, 0, 0, 1], 0, -5, 0),
+                    },
+                ],
+            },
+            walk: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0.0,
+                        Rotation: from_euler([0, 0, 0, 1], 0, 5, 0),
+                    },
+                    {
+                        Timestamp: speed * 0.2,
+                        Rotation: from_euler([0, 0, 0, 1], 0, -5, 0),
+                    },
+                ],
+            },
+        },
+        left_hand: {
+            idle: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0,
+                        Rotation: from_euler([0, 0, 0, 1], 5, 0, 0),
+                    },
+                    {
+                        Timestamp: speed * 0.5,
+                        Rotation: from_euler([0, 0, 0, 1], -5, 0, 0),
+                    },
+                ],
+            },
+            walk: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0,
+                        Rotation: from_euler([0, 0, 0, 1], 30, 0, 0),
+                    },
+                    {
+                        Timestamp: speed * 0.2,
+                        Rotation: from_euler([0, 0, 0, 1], -60, 0, 0),
+                    },
+                ],
+            },
+        },
+        right_hand: {
+            idle: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0,
+                        Rotation: from_euler([0, 0, 0, 1], -5, 0, 0),
+                    },
+                    {
+                        Timestamp: speed * 0.5,
+                        Rotation: from_euler([0, 0, 0, 1], 5, 0, 0),
+                    },
+                ],
+            },
+            walk: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0,
+                        Rotation: from_euler([0, 0, 0, 1], -60, 0, 0),
+                    },
+                    {
+                        Timestamp: speed * 0.2,
+                        Rotation: from_euler([0, 0, 0, 1], 30, 0, 0),
+                    },
+                ],
+            },
+        },
+        left_leg: {
+            idle: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0,
+                        Rotation: from_euler([0, 0, 0, 1], 5, 0, 0),
+                    },
+                    {
+                        Timestamp: speed * 1,
+                        Rotation: from_euler([0, 0, 0, 1], 5, 0, 0),
+                    },
+                ],
+            },
+            walk: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0,
+                        Rotation: from_euler([0, 0, 0, 1], -45, 0, 0),
+                    },
+                    {
+                        Timestamp: speed * 0.2,
+                        Rotation: from_euler([0, 0, 0, 1], 45, 0, 0),
+                    },
+                ],
+            },
+        },
+        right_leg: {
+            idle: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0,
+                        Rotation: from_euler([0, 0, 0, 1], -5, 0, 0),
+                    },
+                    {
+                        Timestamp: speed * 1,
+                        Rotation: from_euler([0, 0, 0, 1], -5, 0, 0),
+                    },
+                ],
+            },
+            walk: {
+                Keyframes: [
+                    {
+                        Timestamp: speed * 0,
+                        Rotation: from_euler([0, 0, 0, 1], 45, 0, 0),
+                    },
+                    {
+                        Timestamp: speed * 0.2,
+                        Rotation: from_euler([0, 0, 0, 1], -45, 0, 0),
+                    },
+                ],
+            },
+        },
+    };
+
+    function prop_body(game) {
+        return [
+            [
+                transform([0, -2, 0], [0, 0.71, 0, 0.71], [1.2, 4, 4.8]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, 2, 0], [0, 0.71, 0, 0.71], [3.6, 4, 8.4]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+        ];
+    }
+    function prop_head(game) {
+        return [
+            [
+                transform(undefined, [0, 0.71, 0, 0.71], [3.6, 5, 4]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, 0, 1.9], [0, 0.71, 0, 0.71], [0.2, 0.6, 3.6]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+        ];
+    }
+    function prop_left_hand(game) {
+        return [
+            [
+                transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+        ];
+    }
+    function prop_left_leg(game) {
+        return [
+            [
+                transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+        ];
+    }
+    function prop_right_hand(game) {
+        return [
+            [
+                transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+        ];
+    }
+    function prop_right_leg(game) {
+        return [
+            [
+                transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+            [
+                transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
+                collide(false, 1 /* Terrain */, 0 /* None */),
+                rigid_body(0 /* Static */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+            ],
+        ];
+    }
+    function blue_kolos1(game) {
+        return [
+            children([
+                transform([0, 14.5, 0], undefined, undefined),
+                children(...prop_body(game)),
+                animate(kolos1_anims.body),
+            ], [transform([0, 21, 0], undefined, undefined), children(...prop_head(game))], [
+                transform([5, 18, 0], undefined, undefined),
+                children(...prop_left_hand(game)),
+                animate(kolos1_anims.left_hand),
+            ], [
+                transform([3, 11, 0], undefined, undefined),
+                children(...prop_left_leg(game)),
+                animate(kolos1_anims.left_leg),
+            ], [
+                transform([-5, 18, 0], undefined, undefined),
+                children(...prop_right_hand(game)),
+                animate(kolos1_anims.right_hand),
+            ], [
+                transform([-3, 11, 0], undefined, undefined),
+                children(...prop_right_leg(game)),
+                animate(kolos1_anims.right_leg),
+            ]),
+        ];
+    }
+
     function control_player(kind) {
         return (game, entity) => {
-            game.World.Signature[entity] |= 8 /* ControlPlayer */;
+            game.World.Signature[entity] |= 16 /* ControlPlayer */;
             game.World.ControlPlayer[entity] = {
                 Kind: kind,
             };
@@ -3473,7 +3940,7 @@
 
     function control_xr(kind) {
         return (game, entity) => {
-            game.World.Signature[entity] |= 16 /* ControlXr */;
+            game.World.Signature[entity] |= 64 /* ControlXr */;
             game.World.ControlXr[entity] = {
                 Kind: kind,
                 Pose: null,
@@ -3493,31 +3960,13 @@
      */
     function move(move_speed, rotation_speed) {
         return (game, entity) => {
-            game.World.Signature[entity] |= 64 /* Move */;
+            game.World.Signature[entity] |= 256 /* Move */;
             game.World.Move[entity] = {
                 MoveSpeed: move_speed,
                 RotationSpeed: rotation_speed,
                 Direction: [0, 0, 0],
                 LocalRotation: [0, 0, 0, 1],
                 SelfRotation: [0, 0, 0, 1],
-            };
-        };
-    }
-
-    /**
-     * @module components/com_rigid_body
-     */
-    function rigid_body(kind, bounciness = 0.5) {
-        return (game, entity) => {
-            game.World.Signature[entity] |= 256 /* RigidBody */;
-            game.World.RigidBody[entity] = {
-                Kind: kind,
-                Bounciness: bounciness,
-                Acceleration: [0, 0, 0],
-                VelocityIntegrated: [0, 0, 0],
-                VelocityResolved: [0, 0, 0],
-                LastPosition: [0, 0, 0],
-                IsAirborne: false,
             };
         };
     }
@@ -3565,12 +4014,23 @@
         ];
     }
 
+    function control_always(direction, rotation, animation) {
+        return (game, entity) => {
+            game.World.Signature[entity] |= 32 /* ControlAlways */;
+            game.World.ControlAlways[entity] = {
+                Direction: direction,
+                Rotation: rotation,
+                AnimationClip: animation,
+            };
+        };
+    }
+
     /**
      * @module components/com_light
      */
     function light_directional(color = [1, 1, 1], range = 1) {
         return (game, entity) => {
-            game.World.Signature[entity] |= 32 /* Light */;
+            game.World.Signature[entity] |= 128 /* Light */;
             game.World.Light[entity] = {
                 Kind: 1 /* Directional */,
                 Color: color,
@@ -3592,7 +4052,6 @@
         // Light.
         instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
         let rubble_count = 20000;
-        let floating_count = 50;
         let ground_x = 10;
         let ground_z = 10;
         let ground_size = 10;
@@ -3632,25 +4091,42 @@
             color[2] = float(0, 1);
         }
         instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices, colors)]);
-        // Floating boxes.
-        for (let i = 0; i < floating_count; i++) {
-            let s = float(5, 10);
-            instantiate(game, [
-                transform([
-                    float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-                    float(3, 25),
-                    float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-                ], from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)), [s, s, s]),
-                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
-                    float(0, 1),
-                    float(0, 1),
-                    float(0, 1),
-                    1,
-                ]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
-                rigid_body(0 /* Static */),
-            ]);
-        }
+        // // Floating boxes.
+        // for (let i = 0; i < floating_count; i++) {
+        //     let s = float(5, 10);
+        //     instantiate(game, [
+        //         transform(
+        //             [
+        //                 float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+        //                 float(3, 25),
+        //                 float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+        //             ],
+        //             from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+        //             [s, s, s]
+        //         ),
+        //         render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
+        //             float(0, 1),
+        //             float(0, 1),
+        //             float(0, 1),
+        //             1,
+        //         ]),
+        //         collide(false, Layer.Terrain, Layer.None),
+        //         rigid_body(RigidKind.Static),
+        //     ]);
+        // }
+        instantiate(game, [transform([10, -2, -10]), ...blue_kolos1(game)]);
+        instantiate(game, [
+            transform([-20, -2, 30], from_euler([0, 0, 0, 1], 0, 180, 0)),
+            move(2, 0),
+            ...blue_kolos1(game),
+            control_always([0, 0, 1], null, "walk"),
+        ]);
+        instantiate(game, [
+            transform([-20, -2, 100], from_euler([0, 0, 0, 1], 0, 180, 0)),
+            move(2, 0),
+            ...blue_kolos1(game),
+            control_always([0, 0, 1], null, "walk"),
+        ]);
     }
 
     let game = new Game();
