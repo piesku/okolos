@@ -2423,17 +2423,19 @@ let head_transform = game.World.Transform[head_entity];
 
 let left = game.XrInputs["left"];
 if (left === null || left === void 0 ? void 0 : left.gamepad) {
-let axis_strafe = -left.gamepad.axes[2];
+let axis_strafe = left.gamepad.axes[2];
 if (axis_strafe) {
 let direction = [axis_strafe, 0, 0];
 transform_direction(direction, direction, head_transform.World);
+transform_direction(direction, direction, transform.Self);
 direction[1] = 0;
 add(move.Direction, move.Direction, direction);
 }
-let axis_forward = -left.gamepad.axes[3];
+let axis_forward = left.gamepad.axes[3];
 if (axis_forward) {
 let direction = [0, 0, axis_forward];
 transform_direction(direction, direction, head_transform.World);
+transform_direction(direction, direction, transform.Self);
 direction[1] = 0;
 add(move.Direction, move.Direction, direction);
 }
@@ -2470,14 +2472,13 @@ if (hand_collide.Collisions.length > 0) {
 if (!left_climbing) {
 left_climbing = true;
 get_translation(left_last_position, hand_transform.World);
+transform_position(left_last_position, left_last_position, transform.Self);
 }
 else {
 get_translation(left_curr_position, hand_transform.World);
+transform_position(left_curr_position, left_curr_position, transform.Self);
 subtract(left_offset, left_last_position, left_curr_position);
 copy$1(left_last_position, left_curr_position);
-
-left_offset[0] *= -1;
-left_offset[2] *= -1;
 transform_direction(left_offset, left_offset, transform.World);
 add(transform.Translation, transform.Translation, left_offset);
 transform.Dirty = true;
@@ -2495,14 +2496,13 @@ if (hand_collide.Collisions.length > 0) {
 if (!right_climbing) {
 right_climbing = true;
 get_translation(right_last_position, hand_transform.World);
+transform_position(right_last_position, right_last_position, transform.Self);
 }
 else {
 get_translation(right_curr_position, hand_transform.World);
+transform_position(right_curr_position, right_curr_position, transform.Self);
 subtract(right_offset, right_last_position, right_curr_position);
 copy$1(right_last_position, right_curr_position);
-
-right_offset[0] *= -1;
-right_offset[2] *= -1;
 transform_direction(right_offset, right_offset, transform.World);
 add(transform.Translation, transform.Translation, right_offset);
 transform.Dirty = true;
@@ -2511,6 +2511,13 @@ transform.Dirty = true;
 }
 else if (right_climbing) {
 right_climbing = false;
+}
+let rigid_body = game.World.RigidBody[entity];
+if (left_climbing || right_climbing) {
+rigid_body.Kind = 2 /* Kinematic */;
+}
+else {
+rigid_body.Kind = 1 /* Dynamic */;
 }
 }
 }
@@ -2530,8 +2537,14 @@ function update$5(game, entity) {
 let transform = game.World.Transform[entity];
 let control = game.World.ControlXr[entity];
 if (control.Kind === 0 /* Head */) {
-let headset = game.XrFrame.getViewerPose(game.XrSpace);
-transform.World = headset.transform.matrix;
+let pose = game.XrFrame.getViewerPose(game.XrSpace);
+transform.Translation[0] = pose.transform.position.x;
+transform.Translation[1] = pose.transform.position.y;
+transform.Translation[2] = pose.transform.position.z;
+transform.Rotation[0] = pose.transform.orientation.x;
+transform.Rotation[1] = pose.transform.orientation.y;
+transform.Rotation[2] = pose.transform.orientation.z;
+transform.Rotation[3] = pose.transform.orientation.w;
 transform.Dirty = true;
 return;
 }
@@ -2541,7 +2554,13 @@ if (input) {
 let pose = game.XrFrame.getPose(input.gripSpace, game.XrSpace);
 if (pose) {
 control.Pose = pose;
-transform.World = pose.transform.matrix;
+transform.Translation[0] = pose.transform.position.x;
+transform.Translation[1] = pose.transform.position.y;
+transform.Translation[2] = pose.transform.position.z;
+transform.Rotation[0] = pose.transform.orientation.x;
+transform.Rotation[1] = pose.transform.orientation.y;
+transform.Rotation[2] = pose.transform.orientation.z;
+transform.Rotation[3] = pose.transform.orientation.w;
 transform.Dirty = true;
 }
 }
@@ -2553,7 +2572,13 @@ if (input) {
 let pose = game.XrFrame.getPose(input.gripSpace, game.XrSpace);
 if (pose) {
 control.Pose = pose;
-transform.World = pose.transform.matrix;
+transform.Translation[0] = pose.transform.position.x;
+transform.Translation[1] = pose.transform.position.y;
+transform.Translation[2] = pose.transform.position.z;
+transform.Rotation[0] = pose.transform.orientation.x;
+transform.Rotation[1] = pose.transform.orientation.y;
+transform.Rotation[2] = pose.transform.orientation.z;
+transform.Rotation[3] = pose.transform.orientation.w;
 transform.Dirty = true;
 }
 }
@@ -3213,10 +3238,7 @@ update_transform(game, i, transform);
 }
 function update_transform(game, entity, transform) {
 transform.Dirty = false;
-if (game.XrFrame && game.World.Signature[entity] & 16 /* ControlXr */) ;
-else {
 from_rotation_translation_scale(transform.World, transform.Rotation, transform.Translation, transform.Scale);
-}
 if (transform.Parent !== undefined) {
 let parent_transform = game.World.Transform[transform.Parent];
 multiply$1(transform.World, parent_transform.World, transform.World);
@@ -3588,9 +3610,29 @@ SelfRotation: [0, 0, 0, 1],
 };
 }
 
+/**
+* @module components/com_rigid_body
+*/
+function rigid_body(kind, bounciness = 0.5) {
+return (game, entity) => {
+game.World.Signature[entity] |= 256 /* RigidBody */;
+game.World.RigidBody[entity] = {
+Kind: kind,
+Bounciness: bounciness,
+Acceleration: [0, 0, 0],
+VelocityIntegrated: [0, 0, 0],
+VelocityResolved: [0, 0, 0],
+LastPosition: [0, 0, 0],
+IsAirborne: false,
+};
+};
+}
+
 function blueprint_viewer(game) {
 return [
 control_player(0 /* Motion */),
+collide(true, 2 /* Player */, 1 /* Terrain */, [0.5, 1.5, 0.1]),
+rigid_body(1 /* Dynamic */, 0.1),
 move(2, 1),
 children(
 
@@ -3608,7 +3650,7 @@ control_xr(0 /* Head */),
 
 transform(),
 control_xr(1 /* Left */),
-collide(true, 2 /* Player */, 1 /* Terrain */, [0.1, 0.1, 0.1]),
+collide(true, 4 /* Hand */, 1 /* Terrain */, [0.1, 0.1, 0.1]),
 children([
 
 transform(undefined, undefined, [-1, 1, 1]),
@@ -3618,7 +3660,7 @@ render_colored_shaded(game.MaterialColoredGouraud, game.MeshHand, [1, 1, 0.3, 1]
 
 transform(),
 control_xr(2 /* Right */),
-collide(true, 2 /* Player */, 1 /* Terrain */, [0.1, 0.1, 0.1]),
+collide(true, 4 /* Hand */, 1 /* Terrain */, [0.1, 0.1, 0.1]),
 children([
 
 transform(),
@@ -3652,7 +3694,7 @@ game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1
 
 instantiate(game, [...blueprint_camera(), transform([0, 2, 0], [0, 1, 0, 0])]);
 
-instantiate(game, [...blueprint_viewer(game), transform([0, 2, 0], [0, 1, 0, 0])]);
+instantiate(game, [...blueprint_viewer(game), transform([0, 50, 0], [0, 1, 0, 0])]);
 
 instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
 let rubble_count = 20000;
@@ -3660,6 +3702,11 @@ let floating_count = 50;
 let ground_x = 10;
 let ground_z = 10;
 let ground_size = 10;
+instantiate(game, [
+transform(undefined, undefined, [ground_x * ground_size, 3, ground_z * ground_size]),
+collide(false, 1 /* Terrain */, 0 /* None */),
+rigid_body(0 /* Static */),
+]);
 let element_count = rubble_count + ground_x * ground_z;
 let matrices = new Float32Array(element_count * 16);
 let colors = new Float32Array(element_count * 3);
