@@ -139,7 +139,7 @@ export class Game extends Game3D {
 
 export const enum Layer {
     None = 0,
-    Terrain = 1,
-    Player = 2,
-    Hand = 4,
+    Player = 1,
+    Solid = 2,
+    Climbable = 8,
 }

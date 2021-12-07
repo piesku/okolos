@@ -40,7 +40,7 @@ export function scene_stage(game: Game) {
 
     instantiate(game, [
         transform(undefined, undefined, [ground_x * ground_size, 3, ground_z * ground_size]),
-        collide(false, Layer.Terrain, Layer.None),
+        collide(false, Layer.Solid, Layer.None),
         rigid_body(RigidKind.Static),
     ]);
 
@@ -109,7 +109,7 @@ export function scene_stage(game: Game) {
     //             float(0, 1),
     //             1,
     //         ]),
-    //         collide(false, Layer.Terrain, Layer.None),
+    //         collide(false, Layer.Solid | Layer.Climbable, Layer.None),
     //         rigid_body(RigidKind.Static),
     //     ]);
     // }
