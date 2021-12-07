@@ -13,7 +13,7 @@ import {Game, Layer} from "../game.js";
 export function blueprint_viewer(game: Game) {
     return [
         control_player(ControlPlayerKind.Motion),
-        collide(true, Layer.Player | Layer.Solid, Layer.Solid, [0.1, 1, 0.1]),
+        collide(true, Layer.Player, Layer.Ground, [0.1, 0.5, 0.1]),
         rigid_body(RigidKind.Dynamic, 0.1),
         move(2, 1),
         children(
