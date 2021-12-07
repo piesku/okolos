@@ -112,14 +112,14 @@ function update(game: Game, entity: Entity) {
             let hand_collide = game.World.Collide[left_hand_entity];
 
             if (hand_collide.Collisions.length > 0) {
+                let climbed_entity = hand_collide.Collisions[0].Other;
+                let climbed_transform = game.World.Transform[climbed_entity];
+                let climbed_children = game.World.Children[climbed_entity];
+
                 if (!left_climbing) {
                     left_climbing = true;
                     get_translation(left_last_position, hand_transform.World);
                     transform_position(left_last_position, left_last_position, transform.Self);
-
-                    let climbed_entity = hand_collide.Collisions[0].Other;
-                    let climbed_transform = game.World.Transform[climbed_entity];
-                    let climbed_children = game.World.Children[climbed_entity];
 
                     if (transform.Parent) {
                         // Release the player from the previous climb.
@@ -154,25 +154,13 @@ function update(game: Game, entity: Entity) {
                     copy(left_last_position, left_curr_position);
 
                     transform_direction(left_offset, left_offset, transform.World);
+                    transform_direction(left_offset, left_offset, climbed_transform.Self);
                     add(transform.Translation, transform.Translation, left_offset);
                     transform.Dirty = true;
                 }
             }
         } else if (left_climbing) {
             left_climbing = false;
-
-            // Release the player.
-            let climbed_entity = transform.Parent!;
-            let climbed_children = game.World.Children[climbed_entity];
-
-            // Un-parent the player.
-            climbed_children.Children.pop();
-            transform.Parent = undefined;
-
-            // Move the player into the world space.
-            get_translation(transform.Translation, transform.World);
-            get_rotation(transform.Rotation, transform.World);
-            transform.Dirty = true;
         }
 
         // Climbing with the right hand.
@@ -181,14 +169,14 @@ function update(game: Game, entity: Entity) {
             let hand_collide = game.World.Collide[right_hand_entity];
 
             if (hand_collide.Collisions.length > 0) {
+                let climbed_entity = hand_collide.Collisions[0].Other;
+                let climbed_transform = game.World.Transform[climbed_entity];
+                let climbed_children = game.World.Children[climbed_entity];
+
                 if (!right_climbing) {
                     right_climbing = true;
                     get_translation(right_last_position, hand_transform.World);
                     transform_position(right_last_position, right_last_position, transform.Self);
-
-                    let climbed_entity = hand_collide.Collisions[0].Other;
-                    let climbed_transform = game.World.Transform[climbed_entity];
-                    let climbed_children = game.World.Children[climbed_entity];
 
                     if (transform.Parent) {
                         // Release the player from the previous climb.
@@ -223,25 +211,13 @@ function update(game: Game, entity: Entity) {
                     copy(right_last_position, right_curr_position);
 
                     transform_direction(right_offset, right_offset, transform.World);
+                    transform_direction(right_offset, right_offset, climbed_transform.Self);
                     add(transform.Translation, transform.Translation, right_offset);
                     transform.Dirty = true;
                 }
             }
         } else if (right_climbing) {
             right_climbing = false;
-
-            // Release the player.
-            let climbed_entity = transform.Parent!;
-            let climbed_children = game.World.Children[climbed_entity];
-
-            // Un-parent the player.
-            climbed_children.Children.pop();
-            transform.Parent = undefined;
-
-            // Move the player into the world space.
-            get_translation(transform.Translation, transform.World);
-            get_rotation(transform.Rotation, transform.World);
-            transform.Dirty = true;
         }
 
         let rigid_body = game.World.RigidBody[entity];
@@ -249,6 +225,21 @@ function update(game: Game, entity: Entity) {
             rigid_body.Kind = RigidKind.Kinematic;
         } else {
             rigid_body.Kind = RigidKind.Dynamic;
+
+            if (transform.Parent) {
+                // Release the player.
+                let climbed_entity = transform.Parent;
+                let climbed_children = game.World.Children[climbed_entity];
+
+                // Un-parent the player.
+                climbed_children.Children.pop();
+                transform.Parent = undefined;
+
+                // Move the player into the world space.
+                get_translation(transform.Translation, transform.World);
+                get_rotation(transform.Rotation, transform.World);
+                transform.Dirty = true;
+            }
         }
     }
 }

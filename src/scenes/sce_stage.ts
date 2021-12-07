@@ -114,7 +114,7 @@ export function scene_stage(game: Game) {
     //     ]);
     // }
 
-    instantiate(game, [transform([10, -2, -10]), ...blue_kolos1(game)]);
+    instantiate(game, [transform([10, 0, -10]), ...blue_kolos1(game)]);
 
     instantiate(game, [
         transform([-20, -2, 30], from_euler([0, 0, 0, 1], 0, 180, 0)),
