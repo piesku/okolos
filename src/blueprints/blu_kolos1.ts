@@ -10,24 +10,30 @@ import {kolos1_anims} from "./animation_blu_kolos1.js";
 export function prop_body(game: Game) {
     return [
         [
-            transform([0, -2, 0], [0, 0.71, 0, 0.71], [1.2, 4, 4.8]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -2, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [1.2, 4, 4.8]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [1.2, 4, 4.8]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, 2, 0], [0, 0.71, 0, 0.71], [3.6, 4, 8.4]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, 2, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [3.6, 4, 8.4]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [3.6, 4, 8.4]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
     ];
 }
@@ -35,24 +41,30 @@ export function prop_body(game: Game) {
 export function prop_head(game: Game) {
     return [
         [
-            transform(undefined, [0, 0.71, 0, 0.71], [3.6, 5, 4]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform(undefined, [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [3.6, 5, 4]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [3.6, 5, 4]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, 0, 1.9], [0, 0.71, 0, 0.71], [0.2, 0.6, 3.6]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, 0, 1.9], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [0.2, 0.6, 3.6]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [0.2, 0.6, 3.6]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
     ];
 }
@@ -60,24 +72,30 @@ export function prop_head(game: Game) {
 export function prop_left_hand(game: Game) {
     return [
         [
-            transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [2, 4, 2]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [2, 4, 2]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [1.2, 8, 1.2]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [1.2, 8, 1.2]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
     ];
 }
@@ -85,44 +103,56 @@ export function prop_left_hand(game: Game) {
 export function prop_left_leg(game: Game) {
     return [
         [
-            transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [2, 4, 2]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [2, 4, 2]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [0.6, 1.6, 1.6]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [0.6, 1.6, 1.6]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [1, 1.2, 1]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [1, 1.2, 1]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [1.2, 8, 1.2]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [1.2, 8, 1.2]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
     ];
 }
@@ -130,24 +160,30 @@ export function prop_left_leg(game: Game) {
 export function prop_right_hand(game: Game) {
     return [
         [
-            transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [2, 4, 2]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [2, 4, 2]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [1.2, 8, 1.2]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [1.2, 8, 1.2]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
     ];
 }
@@ -155,44 +191,56 @@ export function prop_right_hand(game: Game) {
 export function prop_right_leg(game: Game) {
     return [
         [
-            transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [2, 4, 2]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [2, 4, 2]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [0.6, 1.6, 1.6]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [0.6, 1.6, 1.6]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [1, 1.2, 1]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [1, 1.2, 1]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
         [
-            transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Static),
-            render_colored_shaded(
-                game.MaterialColoredGouraud,
-                game.MeshCube,
-                [0.33, 0.33, 0.33, 1]
-            ),
+            transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+            collide(true, Layer.Solid | Layer.Climbable, Layer.None, [1.2, 8, 1.2]),
+            rigid_body(RigidKind.Kinematic),
+            children([
+                transform(undefined, undefined, [1.2, 8, 1.2]),
+                render_colored_shaded(
+                    game.MaterialColoredGouraud,
+                    game.MeshCube,
+                    [0.33, 0.33, 0.33, 1]
+                ),
+            ]),
         ],
     ];
 }

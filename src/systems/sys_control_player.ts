@@ -1,6 +1,6 @@
-import {get_translation} from "../../common/mat4.js";
-import {Vec3} from "../../common/math.js";
-import {from_axis, multiply} from "../../common/quat.js";
+import {get_rotation, get_translation} from "../../common/mat4.js";
+import {Quat, Vec3} from "../../common/math.js";
+import {conjugate, from_axis, multiply} from "../../common/quat.js";
 import {
     add,
     copy,
@@ -116,6 +116,37 @@ function update(game: Game, entity: Entity) {
                     left_climbing = true;
                     get_translation(left_last_position, hand_transform.World);
                     transform_position(left_last_position, left_last_position, transform.Self);
+
+                    let climbed_entity = hand_collide.Collisions[0].Other;
+                    let climbed_transform = game.World.Transform[climbed_entity];
+                    let climbed_children = game.World.Children[climbed_entity];
+
+                    if (transform.Parent) {
+                        // Release the player from the previous climb.
+                        let another_climbed_children = game.World.Children[transform.Parent];
+                        another_climbed_children.Children.pop();
+                    }
+
+                    // Parent the player to the climb.
+                    climbed_children.Children.push(entity);
+                    transform.Parent = climbed_entity;
+
+                    // Compute player's world translation in case they were attached before.
+                    get_translation(transform.Translation, transform.World);
+                    transform_position(
+                        transform.Translation,
+                        transform.Translation,
+                        climbed_transform.Self
+                    );
+
+                    // Compute the offset rotation between the player and the climb.
+                    let climbed_world_rotation: Quat = [0, 0, 0, 1];
+                    get_rotation(climbed_world_rotation, climbed_transform.World);
+                    conjugate(climbed_world_rotation, climbed_world_rotation);
+
+                    get_rotation(transform.Rotation, transform.World);
+                    multiply(transform.Rotation, climbed_world_rotation, transform.Rotation);
+                    transform.Dirty = true;
                 } else {
                     get_translation(left_curr_position, hand_transform.World);
                     transform_position(left_curr_position, left_curr_position, transform.Self);
@@ -129,6 +160,19 @@ function update(game: Game, entity: Entity) {
             }
         } else if (left_climbing) {
             left_climbing = false;
+
+            // Release the player.
+            let climbed_entity = transform.Parent!;
+            let climbed_children = game.World.Children[climbed_entity];
+
+            // Un-parent the player.
+            climbed_children.Children.pop();
+            transform.Parent = undefined;
+
+            // Move the player into the world space.
+            get_translation(transform.Translation, transform.World);
+            get_rotation(transform.Rotation, transform.World);
+            transform.Dirty = true;
         }
 
         // Climbing with the right hand.
@@ -141,6 +185,37 @@ function update(game: Game, entity: Entity) {
                     right_climbing = true;
                     get_translation(right_last_position, hand_transform.World);
                     transform_position(right_last_position, right_last_position, transform.Self);
+
+                    let climbed_entity = hand_collide.Collisions[0].Other;
+                    let climbed_transform = game.World.Transform[climbed_entity];
+                    let climbed_children = game.World.Children[climbed_entity];
+
+                    if (transform.Parent) {
+                        // Release the player from the previous climb.
+                        let another_climbed_children = game.World.Children[transform.Parent];
+                        another_climbed_children.Children.pop();
+                    }
+
+                    // Parent the player to the climb.
+                    climbed_children.Children.push(entity);
+                    transform.Parent = climbed_entity;
+
+                    // Compute player's world translation in case they were attached before.
+                    get_translation(transform.Translation, transform.World);
+                    transform_position(
+                        transform.Translation,
+                        transform.Translation,
+                        climbed_transform.Self
+                    );
+
+                    // Compute the offset rotation between the player and the climb.
+                    let climbed_world_rotation: Quat = [0, 0, 0, 1];
+                    get_rotation(climbed_world_rotation, climbed_transform.World);
+                    conjugate(climbed_world_rotation, climbed_world_rotation);
+
+                    get_rotation(transform.Rotation, transform.World);
+                    multiply(transform.Rotation, climbed_world_rotation, transform.Rotation);
+                    transform.Dirty = true;
                 } else {
                     get_translation(right_curr_position, hand_transform.World);
                     transform_position(right_curr_position, right_curr_position, transform.Self);
@@ -154,6 +229,19 @@ function update(game: Game, entity: Entity) {
             }
         } else if (right_climbing) {
             right_climbing = false;
+
+            // Release the player.
+            let climbed_entity = transform.Parent!;
+            let climbed_children = game.World.Children[climbed_entity];
+
+            // Un-parent the player.
+            climbed_children.Children.pop();
+            transform.Parent = undefined;
+
+            // Move the player into the world space.
+            get_translation(transform.Translation, transform.World);
+            get_rotation(transform.Rotation, transform.World);
+            transform.Dirty = true;
         }
 
         let rigid_body = game.World.RigidBody[entity];

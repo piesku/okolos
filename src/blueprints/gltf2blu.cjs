@@ -27,14 +27,17 @@ let vec = (arr) =>
 let create_child = (mesh, translation, rotation, scale, color = [0.33, 0.33, 0.33, 1]) => {
     return `
     [
-        transform(${vec(translation)}, ${vec(rotation)}, ${vec(scale)}),
-        collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-        rigid_body(RigidKind.Static),
-        render_colored_shaded(
-            game.MaterialColoredGouraud,
-            game.Mesh${mesh},
-            ${vec(color)}
-        ),
+        transform(${vec(translation)}, ${vec(rotation)}, [1, 1, 1]),
+        collide(true, Layer.Solid | Layer.Climbable, Layer.None, ${vec(scale)}),
+        rigid_body(RigidKind.Kinematic),
+        children([
+            transform(undefined, undefined, ${vec(scale)}),
+            render_colored_shaded(
+                game.MaterialColoredGouraud,
+                game.Mesh${mesh},
+                ${vec(color)}
+            ),
+        ]),
     ]`;
 };
 
