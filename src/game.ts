@@ -10,7 +10,6 @@ import {sys_animate} from "./systems/sys_animate.js";
 import {sys_camera} from "./systems/sys_camera.js";
 import {sys_collide} from "./systems/sys_collide.js";
 import {sys_control_always} from "./systems/sys_control_always.js";
-import {sys_control_oculus} from "./systems/sys_control_oculus.js";
 import {sys_control_player} from "./systems/sys_control_player.js";
 import {sys_control_pose} from "./systems/sys_control_pose.js";
 import {sys_debug} from "./systems/sys_debug.js";
@@ -110,7 +109,6 @@ export class Game extends Game3D {
     override FrameUpdate(delta: number) {
         // User input.
         sys_control_pose(this, delta);
-        sys_control_oculus(this, delta);
         sys_control_player(this, delta);
 
         sys_control_always(this, delta);
