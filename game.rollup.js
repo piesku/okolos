@@ -2636,13 +2636,13 @@
                 let hand_transform = game.World.Transform[left_hand_entity];
                 let hand_collide = game.World.Collide[left_hand_entity];
                 if (hand_collide.Collisions.length > 0) {
+                    let climbed_entity = hand_collide.Collisions[0].Other;
+                    let climbed_transform = game.World.Transform[climbed_entity];
+                    let climbed_children = game.World.Children[climbed_entity];
                     if (!left_climbing) {
                         left_climbing = true;
                         get_translation(left_last_position, hand_transform.World);
                         transform_position(left_last_position, left_last_position, transform.Self);
-                        let climbed_entity = hand_collide.Collisions[0].Other;
-                        let climbed_transform = game.World.Transform[climbed_entity];
-                        let climbed_children = game.World.Children[climbed_entity];
                         if (transform.Parent) {
                             // Release the player from the previous climb.
                             let another_climbed_children = game.World.Children[transform.Parent];
@@ -2668,6 +2668,7 @@
                         subtract(left_offset, left_last_position, left_curr_position);
                         copy$1(left_last_position, left_curr_position);
                         transform_direction(left_offset, left_offset, transform.World);
+                        transform_direction(left_offset, left_offset, climbed_transform.Self);
                         add(transform.Translation, transform.Translation, left_offset);
                         transform.Dirty = true;
                     }
@@ -2675,29 +2676,19 @@
             }
             else if (left_climbing) {
                 left_climbing = false;
-                // Release the player.
-                let climbed_entity = transform.Parent;
-                let climbed_children = game.World.Children[climbed_entity];
-                // Un-parent the player.
-                climbed_children.Children.pop();
-                transform.Parent = undefined;
-                // Move the player into the world space.
-                get_translation(transform.Translation, transform.World);
-                get_rotation(transform.Rotation, transform.World);
-                transform.Dirty = true;
             }
             // Climbing with the right hand.
             if (right_hand_entity && (right_hand_control === null || right_hand_control === void 0 ? void 0 : right_hand_control.Squeezed)) {
                 let hand_transform = game.World.Transform[right_hand_entity];
                 let hand_collide = game.World.Collide[right_hand_entity];
                 if (hand_collide.Collisions.length > 0) {
+                    let climbed_entity = hand_collide.Collisions[0].Other;
+                    let climbed_transform = game.World.Transform[climbed_entity];
+                    let climbed_children = game.World.Children[climbed_entity];
                     if (!right_climbing) {
                         right_climbing = true;
                         get_translation(right_last_position, hand_transform.World);
                         transform_position(right_last_position, right_last_position, transform.Self);
-                        let climbed_entity = hand_collide.Collisions[0].Other;
-                        let climbed_transform = game.World.Transform[climbed_entity];
-                        let climbed_children = game.World.Children[climbed_entity];
                         if (transform.Parent) {
                             // Release the player from the previous climb.
                             let another_climbed_children = game.World.Children[transform.Parent];
@@ -2723,6 +2714,7 @@
                         subtract(right_offset, right_last_position, right_curr_position);
                         copy$1(right_last_position, right_curr_position);
                         transform_direction(right_offset, right_offset, transform.World);
+                        transform_direction(right_offset, right_offset, climbed_transform.Self);
                         add(transform.Translation, transform.Translation, right_offset);
                         transform.Dirty = true;
                     }
@@ -2730,16 +2722,6 @@
             }
             else if (right_climbing) {
                 right_climbing = false;
-                // Release the player.
-                let climbed_entity = transform.Parent;
-                let climbed_children = game.World.Children[climbed_entity];
-                // Un-parent the player.
-                climbed_children.Children.pop();
-                transform.Parent = undefined;
-                // Move the player into the world space.
-                get_translation(transform.Translation, transform.World);
-                get_rotation(transform.Rotation, transform.World);
-                transform.Dirty = true;
             }
             let rigid_body = game.World.RigidBody[entity];
             if (left_climbing || right_climbing) {
@@ -2747,6 +2729,18 @@
             }
             else {
                 rigid_body.Kind = 1 /* Dynamic */;
+                if (transform.Parent) {
+                    // Release the player.
+                    let climbed_entity = transform.Parent;
+                    let climbed_children = game.World.Children[climbed_entity];
+                    // Un-parent the player.
+                    climbed_children.Children.pop();
+                    transform.Parent = undefined;
+                    // Move the player into the world space.
+                    get_translation(transform.Translation, transform.World);
+                    get_rotation(transform.Rotation, transform.World);
+                    transform.Dirty = true;
+                }
             }
         }
     }
@@ -4260,7 +4254,7 @@
         //         rigid_body(RigidKind.Static),
         //     ]);
         // }
-        instantiate(game, [transform([10, -2, -10]), ...blue_kolos1(game)]);
+        instantiate(game, [transform([10, 0, -10]), ...blue_kolos1(game)]);
         instantiate(game, [
             transform([-20, -2, 30], from_euler([0, 0, 0, 1], 0, 180, 0)),
             move(2, 0),
