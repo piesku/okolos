@@ -2901,7 +2901,7 @@
      * @module systems/sys_physics_integrate
      */
     const QUERY$4 = 2048 /* Transform */ | 1024 /* RigidBody */;
-    const GRAVITY = -9.81;
+    const GRAVITY = -3.721;
     function sys_physics_integrate(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
             if ((game.World.Signature[i] & QUERY$4) === QUERY$4) {
@@ -3755,13 +3755,13 @@
         return [
             [
                 transform([0, -2, 0], [0, 0.71, 0, 0.71], [1.2, 4, 4.8]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, 2, 0], [0, 0.71, 0, 0.71], [3.6, 4, 8.4]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
@@ -3771,13 +3771,13 @@
         return [
             [
                 transform(undefined, [0, 0.71, 0, 0.71], [3.6, 5, 4]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, 0, 1.9], [0, 0.71, 0, 0.71], [0.2, 0.6, 3.6]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
@@ -3787,13 +3787,13 @@
         return [
             [
                 transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
@@ -3803,25 +3803,25 @@
         return [
             [
                 transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
@@ -3831,13 +3831,13 @@
         return [
             [
                 transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
@@ -3847,25 +3847,25 @@
         return [
             [
                 transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
             [
                 transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-                collide(false, 1 /* Terrain */, 0 /* None */),
+                collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
                 rigid_body(0 /* Static */),
                 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
             ],
@@ -3942,7 +3942,7 @@
     function blueprint_viewer(game) {
         return [
             control_player(0 /* Motion */),
-            collide(true, 2 /* Player */, 1 /* Terrain */, [0.5, 1.5, 0.1]),
+            collide(true, 1 /* Player */, 2 /* Ground */, [0.1, 0.5, 0.1]),
             rigid_body(1 /* Dynamic */, 0.1),
             move(2, 1),
             children(
@@ -3961,7 +3961,7 @@
                     // Left hand (must be Children[2]).
                     transform(),
                     control_xr(1 /* Left */),
-                    collide(true, 4 /* Hand */, 1 /* Terrain */, [0.1, 0.1, 0.1]),
+                    collide(true, 0 /* None */, 8 /* Climbable */, [0.1, 0.1, 0.1]),
                     children([
                         // The hand mesh; must be Children[0].
                         transform(undefined, undefined, [-1, 1, 1]),
@@ -3971,7 +3971,7 @@
                     // Right hand (must be Children[3]).
                     transform(),
                     control_xr(2 /* Right */),
-                    collide(true, 4 /* Hand */, 1 /* Terrain */, [0.1, 0.1, 0.1]),
+                    collide(true, 0 /* None */, 8 /* Climbable */, [0.1, 0.1, 0.1]),
                     children([
                         // The hand mesh; must be Children[0].
                         transform(),
@@ -4025,7 +4025,7 @@
         let ground_size = 10;
         instantiate(game, [
             transform(undefined, undefined, [ground_x * ground_size, 3, ground_z * ground_size]),
-            collide(false, 1 /* Terrain */, 0 /* None */),
+            collide(false, 4 /* Solid */ | 2 /* Ground */, 0 /* None */),
             rigid_body(0 /* Static */),
         ]);
         let element_count = rubble_count + ground_x * ground_z;
@@ -4078,7 +4078,7 @@
         //             float(0, 1),
         //             1,
         //         ]),
-        //         collide(false, Layer.Terrain, Layer.None),
+        //         collide(false, Layer.Solid | Layer.Climbable, Layer.None),
         //         rigid_body(RigidKind.Static),
         //     ]);
         // }
