@@ -1946,15 +1946,15 @@
     /**
      * @module systems/sys_animate
      */
-    const QUERY$d = 2048 /* Transform */ | 1 /* Animate */;
+    const QUERY$c = 2048 /* Transform */ | 1 /* Animate */;
     function sys_animate(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$d) === QUERY$d) {
-                update$9(game, i, delta);
+            if ((game.World.Signature[i] & QUERY$c) === QUERY$c) {
+                update$8(game, i, delta);
             }
         }
     }
-    function update$9(game, entity, delta) {
+    function update$8(game, entity, delta) {
         let transform = game.World.Transform[entity];
         let animate = game.World.Animate[entity];
         // 1. Switch to the trigger if the clip has completed or early exits are allowed.
@@ -2217,11 +2217,11 @@
         invert(projection.Inverse, projection.Projection);
     }
 
-    const QUERY$c = 2048 /* Transform */ | 2 /* Camera */;
+    const QUERY$b = 2048 /* Transform */ | 2 /* Camera */;
     function sys_camera(game, delta) {
         game.Cameras = [];
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$c) === QUERY$c) {
+            if ((game.World.Signature[i] & QUERY$b) === QUERY$b) {
                 let camera = game.World.Camera[i];
                 if (camera.Kind === 1 /* Xr */ && game.XrFrame) {
                     game.Cameras.push(i);
@@ -2362,13 +2362,13 @@
     /**
      * @module systems/sys_collide
      */
-    const QUERY$b = 2048 /* Transform */ | 8 /* Collide */;
+    const QUERY$a = 2048 /* Transform */ | 8 /* Collide */;
     function sys_collide(game, delta) {
         // Collect all colliders.
         let static_colliders = [];
         let dynamic_colliders = [];
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$b) === QUERY$b) {
+            if ((game.World.Signature[i] & QUERY$a) === QUERY$a) {
                 let transform = game.World.Transform[i];
                 let collider = game.World.Collide[i];
                 // Prepare the collider for this tick's detection.
@@ -2463,15 +2463,15 @@
         }
     }
 
-    const QUERY$a = 32 /* ControlAlways */ | 2048 /* Transform */;
+    const QUERY$9 = 32 /* ControlAlways */ | 2048 /* Transform */;
     function sys_control_always(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$a) === QUERY$a) {
-                update$8(game, i);
+            if ((game.World.Signature[i] & QUERY$9) === QUERY$9) {
+                update$7(game, i);
             }
         }
     }
-    function update$8(game, entity) {
+    function update$7(game, entity) {
         let control = game.World.ControlAlways[entity];
         let move = game.World.Move[entity];
         if (control.Direction) {
@@ -2488,63 +2488,6 @@
         }
     }
 
-    const QUERY$9 = 2048 /* Transform */ | 64 /* ControlXr */;
-    const AXIS_Y$1 = [0, 1, 0];
-    function sys_control_oculus(game, delta) {
-        if (!game.XrFrame) {
-            return;
-        }
-        for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$9) === QUERY$9) {
-                update$7(game, i);
-            }
-        }
-    }
-    function update$7(game, entity) {
-        let children = game.World.Children[entity];
-        let control = game.World.ControlXr[entity];
-        if (control.Kind === 1 /* Left */) {
-            let input = game.XrInputs["left"];
-            if (input === null || input === void 0 ? void 0 : input.gamepad) {
-                let squeeze = input.gamepad.buttons[1];
-                if (squeeze) {
-                    // Open or close the hand.
-                    let hand_entity = children.Children[0];
-                    let hand_transform = game.World.Transform[hand_entity];
-                    hand_transform.Scale[2] = map_range(squeeze.value, 0, 1, 1, 0.5);
-                    from_axis(hand_transform.Rotation, AXIS_Y$1, -squeeze.value);
-                    hand_transform.Dirty = true;
-                    if (squeeze.value > 0.5) {
-                        control.Squeezed = true;
-                    }
-                    else {
-                        control.Squeezed = false;
-                    }
-                }
-            }
-        }
-        if (control.Kind === 2 /* Right */) {
-            let input = game.XrInputs["right"];
-            if (input === null || input === void 0 ? void 0 : input.gamepad) {
-                let squeeze = input.gamepad.buttons[1];
-                if (squeeze) {
-                    // Open or close the hand.
-                    let hand_entity = children.Children[0];
-                    let hand_transform = game.World.Transform[hand_entity];
-                    hand_transform.Scale[2] = map_range(squeeze.value, 0, 1, 1, 0.5);
-                    from_axis(hand_transform.Rotation, AXIS_Y$1, squeeze.value);
-                    hand_transform.Dirty = true;
-                    if (squeeze.value > 0.5) {
-                        control.Squeezed = true;
-                    }
-                    else {
-                        control.Squeezed = false;
-                    }
-                }
-            }
-        }
-    }
-
     const QUERY$8 = 2048 /* Transform */ | 16 /* ControlPlayer */;
     function sys_control_player(game, delta) {
         if (!game.XrFrame) {
@@ -2556,7 +2499,7 @@
             }
         }
     }
-    const AXIS_Y = [0, 1, 0];
+    const AXIS_Y$1 = [0, 1, 0];
     let left_climbing = false;
     let left_last_position = [0, 0, 0];
     let left_curr_position = [0, 0, 0];
@@ -2612,7 +2555,7 @@
                 let axis_rotate = -right.gamepad.axes[2];
                 if (axis_rotate) {
                     let amount = axis_rotate * Math.PI;
-                    let rotation = from_axis([0, 0, 0, 1], AXIS_Y, amount);
+                    let rotation = from_axis([0, 0, 0, 1], AXIS_Y$1, amount);
                     multiply$1(move.LocalRotation, move.LocalRotation, rotation);
                 }
             }
@@ -2689,9 +2632,11 @@
             }
         }
     }
+    const AXIS_Y = [0, 1, 0];
     function update$5(game, entity) {
         let transform = game.World.Transform[entity];
         let control = game.World.ControlXr[entity];
+        let children = game.World.Children[entity];
         if (control.Kind === 0 /* Head */) {
             let pose = game.XrFrame.getViewerPose(game.XrSpace);
             transform.Translation[0] = pose.transform.position.x;
@@ -2719,6 +2664,18 @@
                     transform.Rotation[3] = pose.transform.orientation.w;
                     transform.Dirty = true;
                 }
+                if (input.gamepad) {
+                    let squeeze = input.gamepad.buttons[1];
+                    if (squeeze) {
+                        control.Squeezed = squeeze.pressed;
+                        // Open or close the hand.
+                        let hand_entity = children.Children[0];
+                        let hand_transform = game.World.Transform[hand_entity];
+                        hand_transform.Scale[2] = map_range(squeeze.value, 0, 1, 1, 0.5);
+                        from_axis(hand_transform.Rotation, AXIS_Y, -squeeze.value);
+                        hand_transform.Dirty = true;
+                    }
+                }
             }
             return;
         }
@@ -2736,6 +2693,18 @@
                     transform.Rotation[2] = pose.transform.orientation.z;
                     transform.Rotation[3] = pose.transform.orientation.w;
                     transform.Dirty = true;
+                }
+                if (input.gamepad) {
+                    let squeeze = input.gamepad.buttons[1];
+                    if (squeeze) {
+                        control.Squeezed = squeeze.pressed;
+                        // Open or close the hand.
+                        let hand_entity = children.Children[0];
+                        let hand_transform = game.World.Transform[hand_entity];
+                        hand_transform.Scale[2] = map_range(squeeze.value, 0, 1, 1, 0.5);
+                        from_axis(hand_transform.Rotation, AXIS_Y, squeeze.value);
+                        hand_transform.Dirty = true;
+                    }
                 }
             }
             return;
@@ -3506,7 +3475,6 @@
         FrameUpdate(delta) {
             // User input.
             sys_control_pose(this);
-            sys_control_oculus(this);
             sys_control_player(this);
             sys_control_always(this);
             // Game logic.
