@@ -1863,6 +1863,13 @@ out[2] = az * bw + aw * bz + ax * by - ay * bx;
 out[3] = aw * bw - ax * bx - ay * by - az * bz;
 return out;
 }
+function conjugate(out, a) {
+out[0] = -a[0];
+out[1] = -a[1];
+out[2] = -a[2];
+out[3] = a[3];
+return out;
+}
 /**
 * Compute a quaternion out of three Euler angles given in degrees. The order of rotation is YXZ.
 * @param out Quaternion to write to.
@@ -2196,6 +2203,67 @@ function get_translation(out, mat) {
 out[0] = mat[12];
 out[1] = mat[13];
 out[2] = mat[14];
+return out;
+}
+function get_scaling(out, mat) {
+let m11 = mat[0];
+let m12 = mat[1];
+let m13 = mat[2];
+let m21 = mat[4];
+let m22 = mat[5];
+let m23 = mat[6];
+let m31 = mat[8];
+let m32 = mat[9];
+let m33 = mat[10];
+out[0] = Math.hypot(m11, m12, m13);
+out[1] = Math.hypot(m21, m22, m23);
+out[2] = Math.hypot(m31, m32, m33);
+return out;
+}
+function get_rotation(out, mat) {
+let scaling = get_scaling([0, 0, 0], mat);
+let is1 = 1 / scaling[0];
+let is2 = 1 / scaling[1];
+let is3 = 1 / scaling[2];
+let sm11 = mat[0] * is1;
+let sm12 = mat[1] * is2;
+let sm13 = mat[2] * is3;
+let sm21 = mat[4] * is1;
+let sm22 = mat[5] * is2;
+let sm23 = mat[6] * is3;
+let sm31 = mat[8] * is1;
+let sm32 = mat[9] * is2;
+let sm33 = mat[10] * is3;
+let trace = sm11 + sm22 + sm33;
+let S = 0;
+if (trace > 0) {
+S = Math.sqrt(trace + 1.0) * 2;
+out[3] = 0.25 * S;
+out[0] = (sm23 - sm32) / S;
+out[1] = (sm31 - sm13) / S;
+out[2] = (sm12 - sm21) / S;
+}
+else if (sm11 > sm22 && sm11 > sm33) {
+S = Math.sqrt(1.0 + sm11 - sm22 - sm33) * 2;
+out[3] = (sm23 - sm32) / S;
+out[0] = 0.25 * S;
+out[1] = (sm12 + sm21) / S;
+out[2] = (sm31 + sm13) / S;
+}
+else if (sm22 > sm33) {
+S = Math.sqrt(1.0 + sm22 - sm11 - sm33) * 2;
+out[3] = (sm31 - sm13) / S;
+out[0] = (sm12 + sm21) / S;
+out[1] = 0.25 * S;
+out[2] = (sm23 + sm32) / S;
+}
+else {
+S = Math.sqrt(1.0 + sm33 - sm11 - sm22) * 2;
+out[3] = (sm12 - sm21) / S;
+out[0] = (sm31 + sm13) / S;
+out[1] = (sm23 + sm32) / S;
+out[2] = 0.25 * S;
+}
 return out;
 }
 function distance_squared_from_point(m, v) {
@@ -2572,6 +2640,27 @@ if (!left_climbing) {
 left_climbing = true;
 get_translation(left_last_position, hand_transform.World);
 transform_position(left_last_position, left_last_position, transform.Self);
+let climbed_entity = hand_collide.Collisions[0].Other;
+let climbed_transform = game.World.Transform[climbed_entity];
+let climbed_children = game.World.Children[climbed_entity];
+if (transform.Parent) {
+
+let another_climbed_children = game.World.Children[transform.Parent];
+another_climbed_children.Children.pop();
+}
+
+climbed_children.Children.push(entity);
+transform.Parent = climbed_entity;
+
+get_translation(transform.Translation, transform.World);
+transform_position(transform.Translation, transform.Translation, climbed_transform.Self);
+
+let climbed_world_rotation = [0, 0, 0, 1];
+get_rotation(climbed_world_rotation, climbed_transform.World);
+conjugate(climbed_world_rotation, climbed_world_rotation);
+get_rotation(transform.Rotation, transform.World);
+multiply$1(transform.Rotation, climbed_world_rotation, transform.Rotation);
+transform.Dirty = true;
 }
 else {
 get_translation(left_curr_position, hand_transform.World);
@@ -2586,6 +2675,16 @@ transform.Dirty = true;
 }
 else if (left_climbing) {
 left_climbing = false;
+
+let climbed_entity = transform.Parent;
+let climbed_children = game.World.Children[climbed_entity];
+
+climbed_children.Children.pop();
+transform.Parent = undefined;
+
+get_translation(transform.Translation, transform.World);
+get_rotation(transform.Rotation, transform.World);
+transform.Dirty = true;
 }
 
 if (right_hand_entity && (right_hand_control === null || right_hand_control === void 0 ? void 0 : right_hand_control.Squeezed)) {
@@ -2596,6 +2695,27 @@ if (!right_climbing) {
 right_climbing = true;
 get_translation(right_last_position, hand_transform.World);
 transform_position(right_last_position, right_last_position, transform.Self);
+let climbed_entity = hand_collide.Collisions[0].Other;
+let climbed_transform = game.World.Transform[climbed_entity];
+let climbed_children = game.World.Children[climbed_entity];
+if (transform.Parent) {
+
+let another_climbed_children = game.World.Children[transform.Parent];
+another_climbed_children.Children.pop();
+}
+
+climbed_children.Children.push(entity);
+transform.Parent = climbed_entity;
+
+get_translation(transform.Translation, transform.World);
+transform_position(transform.Translation, transform.Translation, climbed_transform.Self);
+
+let climbed_world_rotation = [0, 0, 0, 1];
+get_rotation(climbed_world_rotation, climbed_transform.World);
+conjugate(climbed_world_rotation, climbed_world_rotation);
+get_rotation(transform.Rotation, transform.World);
+multiply$1(transform.Rotation, climbed_world_rotation, transform.Rotation);
+transform.Dirty = true;
 }
 else {
 get_translation(right_curr_position, hand_transform.World);
@@ -2610,6 +2730,16 @@ transform.Dirty = true;
 }
 else if (right_climbing) {
 right_climbing = false;
+
+let climbed_entity = transform.Parent;
+let climbed_children = game.World.Children[climbed_entity];
+
+climbed_children.Children.pop();
+transform.Parent = undefined;
+
+get_translation(transform.Translation, transform.World);
+get_rotation(transform.Rotation, transform.World);
+transform.Dirty = true;
 }
 let rigid_body = game.World.RigidBody[entity];
 if (left_climbing || right_climbing) {
@@ -3754,120 +3884,168 @@ Rotation: from_euler([0, 0, 0, 1], -45, 0, 0),
 function prop_body(game) {
 return [
 [
-transform([0, -2, 0], [0, 0.71, 0, 0.71], [1.2, 4, 4.8]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -2, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [1.2, 4, 4.8]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [1.2, 4, 4.8]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, 2, 0], [0, 0.71, 0, 0.71], [3.6, 4, 8.4]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, 2, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [3.6, 4, 8.4]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [3.6, 4, 8.4]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 ];
 }
 function prop_head(game) {
 return [
 [
-transform(undefined, [0, 0.71, 0, 0.71], [3.6, 5, 4]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform(undefined, [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [3.6, 5, 4]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [3.6, 5, 4]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, 0, 1.9], [0, 0.71, 0, 0.71], [0.2, 0.6, 3.6]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, 0, 1.9], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [0.2, 0.6, 3.6]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [0.2, 0.6, 3.6]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 ];
 }
 function prop_left_hand(game) {
 return [
 [
-transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [2, 4, 2]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [2, 4, 2]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [1.2, 8, 1.2]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [1.2, 8, 1.2]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 ];
 }
 function prop_left_leg(game) {
 return [
 [
-transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [2, 4, 2]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [2, 4, 2]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [0.6, 1.6, 1.6]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [0.6, 1.6, 1.6]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [1, 1.2, 1]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [1, 1.2, 1]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [1.2, 8, 1.2]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [1.2, 8, 1.2]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 ];
 }
 function prop_right_hand(game) {
 return [
 [
-transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -9.8, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [2, 4, 2]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [2, 4, 2]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -3.8, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [1.2, 8, 1.2]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [1.2, 8, 1.2]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 ];
 }
 function prop_right_leg(game) {
 return [
 [
-transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [2, 4, 2]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -9.1, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [2, 4, 2]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [2, 4, 2]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [0.6, 1.6, 1.6]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -10.3, 1.3], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [0.6, 1.6, 1.6]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [0.6, 1.6, 1.6]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1.2, 1]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -10.5, 1.55], [0, 0.92, 0, 0.38], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [1, 1.2, 1]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [1, 1.2, 1]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 [
-transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1.2, 8, 1.2]),
-collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */),
-rigid_body(0 /* Static */),
+transform([0, -3.1, 0], [0, 0.71, 0, 0.71], [1, 1, 1]),
+collide(true, 4 /* Solid */ | 8 /* Climbable */, 0 /* None */, [1.2, 8, 1.2]),
+rigid_body(2 /* Kinematic */),
+children([
+transform(undefined, undefined, [1.2, 8, 1.2]),
 render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [0.33, 0.33, 0.33, 1]),
+]),
 ],
 ];
 }
