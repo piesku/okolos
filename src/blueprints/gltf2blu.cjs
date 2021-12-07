@@ -28,7 +28,7 @@ let create_child = (mesh, translation, rotation, scale, color = [0.33, 0.33, 0.3
     return `
     [
         transform(${vec(translation)}, ${vec(rotation)}, ${vec(scale)}),
-        collide(false, Layer.Solid | Layer.Climbable, Layer.None),
+        collide(true, Layer.Solid | Layer.Climbable, Layer.None),
         rigid_body(RigidKind.Static),
         render_colored_shaded(
             game.MaterialColoredGouraud,
