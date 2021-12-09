@@ -5,7 +5,7 @@ export class WorldImpl {
     Signature: Array<number> = [];
     Graveyard: Array<Entity> = [];
 
-    constructor(capacity: number = 10_000) {
+    constructor(capacity: number = 20_000) {
         this.Capacity = capacity;
     }
 

@@ -4,5 +4,5 @@ all: $(TARGETS)
 
 blu_%.ts: ../../assets/%.gltf
 	@echo "$< → $@"
-	@cat $< | node gltf2blu.cjs $* > $@
+	@node gltf2blu.cjs $* > $@
 	@npx prettier --loglevel=silent --write $@

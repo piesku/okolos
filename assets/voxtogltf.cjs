@@ -53,15 +53,20 @@ parser.parse("./mech.vox").then((result) => {
 
     let res = [];
     model_data.cubes.forEach((cube, idx) => {
+        res.push(cube.color);
         const [x, y, z] = cube.offset;
-        res.push(`{
-            "mesh": 0,
-            "name": "Cube.${idx.toString().padStart(3, "0")}",
-            "translation": [${x * 2}, ${y * 2}, ${z * 2}]
-        }`);
+        // res.push(`{
+        //     "mesh": 0,
+        //     "name": "Cube.${idx.toString().padStart(3, "0")}",
+        //     "translation": [${x * 2}, ${y * 2}, ${z * 2}]
+        // }`);
     });
-    console.log(model_data.cubes.length);
-    fs.writeFileSync(path.join(__dirname, "./mech1.gltf"), res.join(", \n"));
+    // console.log(final_palette.map((e) => e.map((nr) => parseFloat(nr))));
+
+    fs.writeFileSync(
+        path.join(__dirname, "./colors.cjs"),
+        `module.exports = ` + JSON.stringify(res)
+    );
 });
 
 function find_cube(collection, cords) {

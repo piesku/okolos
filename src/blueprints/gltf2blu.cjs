@@ -2,6 +2,7 @@
 
 const {readFileSync} = require("fs");
 const path = require("path");
+const color_map = require("../../assets/colors.cjs");
 
 if (process.argv.length !== 3) {
     console.error("Provide a GLTF file on stdin and the name of the blueprint:");
@@ -11,9 +12,9 @@ if (process.argv.length !== 3) {
 
 let mesh = "Cube";
 
-process.stdin.resume();
-let json = readFileSync(process.stdin.fd, "utf8");
-process.stdin.pause();
+// process.stdin.resume();
+// let json = readFileSync(process.stdin.fd, "utf8");
+// process.stdin.pause();
 
 let blueprint_name = process.argv[2]
     .toLowerCase()
@@ -22,6 +23,8 @@ let blueprint_name = process.argv[2]
     .replace(/\-\-+/g, "-")
     .replace(/^-+/, "")
     .replace(/-+$/, "");
+
+let json = readFileSync("../../assets/" + blueprint_name + ".gltf", "utf8");
 
 let vec = (arr) =>
     arr ? "[" + arr.map((v) => parseFloat(v.toFixed(2))).join(", ") + "]" : "undefined";
@@ -65,44 +68,26 @@ let nodes = gltf.nodes;
 //     return acc;
 // }, {});
 const colors = [
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0.33, 0.33, 0.33],
-    [0, 0, 0],
+    [0.53, 0.55, 0.56],
+    [0.21, 0.21, 0.21],
+    [0.35, 0.33, 0.31],
+    [0.22, 0.22, 0.22],
+    [0.15, 0.15, 0.15],
+    [0.47, 0.66, 1],
     [1, 1, 1],
+    [0.47, 0.66, 1],
 ];
+
 let blueprint_elements = [];
 let animated_parts = ["body", "left_hand", "right_hand", "left_leg", "right_leg"];
-
-let props = nodes.reduce((acc, node) => {
+let off = 0;
+let props = nodes.reduce((acc, node, index) => {
     if (node.name.includes(".")) {
         // prop
         const split_name = node.name.split(".");
         // const mesh = split_name[0];
         const name = split_name[1];
-        acc[name] = acc[name] || {views: [], colors: []};
+        acc[name] = acc[name] || {views: [], colors: [], colliders: []};
 
         let view = from_rotation_translation_scale(
             [],
@@ -112,12 +97,19 @@ let props = nodes.reduce((acc, node) => {
         );
 
         acc[name].views = acc[name].views.concat(view);
-        // get random element from colors
-        const color = colors[Math.floor(Math.random() * colors.length)];
+        const color = colors[0];
 
         acc[name].colors.push(...color);
+        // acc[name].colors.push(...colors[color_map[index - off]]);
+
+        acc[name].colliders.push(`[
+            transform(${vec(node.translation)}, ${vec(node.rotation)}, ${vec(node.scale)}),
+            collide(false, Layer.Terrain, Layer.None),
+            rigid_body(RigidKind.Static),
+        ]`);
     } else if (node.name !== "root") {
         // blueprint
+        off++;
         blueprint_elements.push(
             create_child_with_children(
                 node.name,
@@ -130,12 +122,15 @@ let props = nodes.reduce((acc, node) => {
     return acc;
 }, {});
 
+//children(${props[name].colliders.join(",\n ")}),
 let result = `\
 import { animate } from "../components/com_animate.js";
 import { children } from "../components/com_children.js";
+import { collide } from "../components/com_collide.js";
 import { render_instanced } from "../components/com_render.js";
+import { rigid_body, RigidKind } from "../components/com_rigid_body.js";
 import { transform } from "../components/com_transform.js";
-import { Game } from "../game.js";
+import { Game, Layer } from "../game.js";
 import { kolos1_anims } from "./animation_blu_kolos1.js";
 
 ${Object.keys(props)
@@ -146,7 +141,7 @@ export function prop_${name}(game: Game) {
         transform(),
         render_instanced(game.MeshCube, Float32Array.from(${vec(
             props[name].views
-        )}), Float32Array.from(${vec(props[name].colors)}))
+        )}), Float32Array.from(${vec(props[name].colors)})),
     ];
 }`;
     })
