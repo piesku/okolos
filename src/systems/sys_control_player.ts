@@ -1,9 +1,9 @@
-import {get_rotation, get_translation} from "../../common/mat4.js";
-import {Quat, Vec3} from "../../common/math.js";
-import {conjugate, from_axis, multiply} from "../../common/quat.js";
+import {get_translation} from "../../common/mat4.js";
+import {Vec3} from "../../common/math.js";
+import {from_axis, multiply as quat_multiply} from "../../common/quat.js";
 import {
     add,
-    copy,
+    copy as vec3_copy,
     length,
     subtract,
     transform_direction,
@@ -12,6 +12,7 @@ import {
 import {Entity} from "../../common/world.js";
 import {ControlPlayerKind} from "../components/com_control_player.js";
 import {RigidKind} from "../components/com_rigid_body.js";
+import {TransformKind} from "../components/com_transform.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
 
@@ -97,7 +98,7 @@ function update(game: Game, entity: Entity) {
             if (axis_rotate) {
                 let amount = axis_rotate * Math.PI;
                 let rotation = from_axis([0, 0, 0, 1], AXIS_Y, amount);
-                multiply(move.LocalRotation, move.LocalRotation, rotation);
+                quat_multiply(move.LocalRotation, move.LocalRotation, rotation);
             }
         }
 
@@ -112,9 +113,9 @@ function update(game: Game, entity: Entity) {
             let hand_collide = game.World.Collide[left_hand_entity];
 
             if (hand_collide.Collisions.length > 0) {
-                let climbed_entity = hand_collide.Collisions[0].Other;
-                let climbed_transform = game.World.Transform[climbed_entity];
-                let climbed_children = game.World.Children[climbed_entity];
+                let climb_entity = hand_collide.Collisions[0].Other;
+                let climb_transform = game.World.Transform[climb_entity];
+                let climb_children = game.World.Children[climb_entity];
 
                 if (!left_climbing) {
                     left_climbing = true;
@@ -128,33 +129,27 @@ function update(game: Game, entity: Entity) {
                     }
 
                     // Parent the player to the climb.
-                    climbed_children.Children.push(entity);
-                    transform.Parent = climbed_entity;
+                    climb_children.Children.push(entity);
+                    transform.Parent = climb_entity;
 
                     // Compute player's world translation in case they were attached before.
                     get_translation(transform.Translation, transform.World);
                     transform_position(
                         transform.Translation,
                         transform.Translation,
-                        climbed_transform.Self
+                        climb_transform.Self
                     );
 
-                    // Compute the offset rotation between the player and the climb.
-                    let climbed_world_rotation: Quat = [0, 0, 0, 1];
-                    get_rotation(climbed_world_rotation, climbed_transform.World);
-                    conjugate(climbed_world_rotation, climbed_world_rotation);
-
-                    get_rotation(transform.Rotation, transform.World);
-                    multiply(transform.Rotation, climbed_world_rotation, transform.Rotation);
+                    transform.Kind = TransformKind.Gyroscope;
                     transform.Dirty = true;
                 } else {
                     get_translation(left_curr_position, hand_transform.World);
                     transform_position(left_curr_position, left_curr_position, transform.Self);
                     subtract(left_offset, left_last_position, left_curr_position);
-                    copy(left_last_position, left_curr_position);
+                    vec3_copy(left_last_position, left_curr_position);
 
                     transform_direction(left_offset, left_offset, transform.World);
-                    transform_direction(left_offset, left_offset, climbed_transform.Self);
+                    transform_direction(left_offset, left_offset, climb_transform.Self);
                     add(transform.Translation, transform.Translation, left_offset);
                     transform.Dirty = true;
                 }
@@ -165,13 +160,14 @@ function update(game: Game, entity: Entity) {
 
         // Climbing with the right hand.
         if (right_hand_entity && right_hand_control?.Squeezed) {
+            //if (right_hand_entity) {
             let hand_transform = game.World.Transform[right_hand_entity];
             let hand_collide = game.World.Collide[right_hand_entity];
 
             if (hand_collide.Collisions.length > 0) {
-                let climbed_entity = hand_collide.Collisions[0].Other;
-                let climbed_transform = game.World.Transform[climbed_entity];
-                let climbed_children = game.World.Children[climbed_entity];
+                let climb_entity = hand_collide.Collisions[0].Other;
+                let climb_transform = game.World.Transform[climb_entity];
+                let climb_children = game.World.Children[climb_entity];
 
                 if (!right_climbing) {
                     right_climbing = true;
@@ -185,33 +181,27 @@ function update(game: Game, entity: Entity) {
                     }
 
                     // Parent the player to the climb.
-                    climbed_children.Children.push(entity);
-                    transform.Parent = climbed_entity;
+                    climb_children.Children.push(entity);
+                    transform.Parent = climb_entity;
 
                     // Compute player's world translation in case they were attached before.
                     get_translation(transform.Translation, transform.World);
                     transform_position(
                         transform.Translation,
                         transform.Translation,
-                        climbed_transform.Self
+                        climb_transform.Self
                     );
 
-                    // Compute the offset rotation between the player and the climb.
-                    let climbed_world_rotation: Quat = [0, 0, 0, 1];
-                    get_rotation(climbed_world_rotation, climbed_transform.World);
-                    conjugate(climbed_world_rotation, climbed_world_rotation);
-
-                    get_rotation(transform.Rotation, transform.World);
-                    multiply(transform.Rotation, climbed_world_rotation, transform.Rotation);
+                    transform.Kind = TransformKind.Gyroscope;
                     transform.Dirty = true;
                 } else {
                     get_translation(right_curr_position, hand_transform.World);
                     transform_position(right_curr_position, right_curr_position, transform.Self);
                     subtract(right_offset, right_last_position, right_curr_position);
-                    copy(right_last_position, right_curr_position);
+                    vec3_copy(right_last_position, right_curr_position);
 
                     transform_direction(right_offset, right_offset, transform.World);
-                    transform_direction(right_offset, right_offset, climbed_transform.Self);
+                    transform_direction(right_offset, right_offset, climb_transform.Self);
                     add(transform.Translation, transform.Translation, right_offset);
                     transform.Dirty = true;
                 }
@@ -237,7 +227,8 @@ function update(game: Game, entity: Entity) {
 
                 // Move the player into the world space.
                 get_translation(transform.Translation, transform.World);
-                get_rotation(transform.Rotation, transform.World);
+
+                transform.Kind = TransformKind.Regular;
                 transform.Dirty = true;
             }
         }
