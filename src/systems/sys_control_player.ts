@@ -1,4 +1,4 @@
-import {get_translation} from "../../common/mat4.js";
+import {distance_squared, get_forward, get_translation} from "../../common/mat4.js";
 import {Vec3} from "../../common/math.js";
 import {from_axis, multiply as quat_multiply} from "../../common/quat.js";
 import {
@@ -46,6 +46,7 @@ function update(game: Game, entity: Entity) {
     let transform = game.World.Transform[entity];
     let children = game.World.Children[entity];
     let control = game.World.ControlPlayer[entity];
+    let rigid_body = game.World.RigidBody[entity];
 
     if (control.Kind === ControlPlayerKind.Motion) {
         let move = game.World.Move[entity];
@@ -103,13 +104,25 @@ function update(game: Game, entity: Entity) {
         }
 
         let left_hand_entity = bob_children.Children[2];
+        let left_hand_transform = game.World.Transform[left_hand_entity];
         let left_hand_control = game.World.ControlXr[left_hand_entity];
         let right_hand_entity = bob_children.Children[3];
+        let right_hand_transform = game.World.Transform[right_hand_entity];
         let right_hand_control = game.World.ControlXr[right_hand_entity];
 
+        // Gliding.
+        let hands_apart = distance_squared(left_hand_transform.World, right_hand_transform.World);
+        if (hands_apart > 1 && rigid_body.IsAirborne) {
+            let forward: Vec3 = [0, 0, 0];
+            get_forward(forward, head_transform.World);
+            rigid_body.VelocityResolved[0] = -3 * forward[0];
+            rigid_body.VelocityResolved[1] = -3;
+            rigid_body.VelocityResolved[2] = -3 * forward[2];
+            rigid_body.Acceleration[1] += 3;
+        }
+
         // Climbing with the left hand.
-        if (left_hand_entity && left_hand_control?.Squeezed) {
-            let hand_transform = game.World.Transform[left_hand_entity];
+        if (left_hand_control.Squeezed) {
             let hand_collide = game.World.Collide[left_hand_entity];
 
             if (hand_collide.Collisions.length > 0) {
@@ -119,7 +132,7 @@ function update(game: Game, entity: Entity) {
 
                 if (!left_climbing) {
                     left_climbing = true;
-                    get_translation(left_last_position, hand_transform.World);
+                    get_translation(left_last_position, left_hand_transform.World);
                     transform_position(left_last_position, left_last_position, transform.Self);
 
                     if (transform.Parent) {
@@ -143,7 +156,7 @@ function update(game: Game, entity: Entity) {
                     transform.Kind = TransformKind.Gyroscope;
                     transform.Dirty = true;
                 } else {
-                    get_translation(left_curr_position, hand_transform.World);
+                    get_translation(left_curr_position, left_hand_transform.World);
                     transform_position(left_curr_position, left_curr_position, transform.Self);
                     subtract(left_offset, left_last_position, left_curr_position);
                     vec3_copy(left_last_position, left_curr_position);
@@ -159,9 +172,7 @@ function update(game: Game, entity: Entity) {
         }
 
         // Climbing with the right hand.
-        if (right_hand_entity && right_hand_control?.Squeezed) {
-            //if (right_hand_entity) {
-            let hand_transform = game.World.Transform[right_hand_entity];
+        if (right_hand_control.Squeezed) {
             let hand_collide = game.World.Collide[right_hand_entity];
 
             if (hand_collide.Collisions.length > 0) {
@@ -171,7 +182,7 @@ function update(game: Game, entity: Entity) {
 
                 if (!right_climbing) {
                     right_climbing = true;
-                    get_translation(right_last_position, hand_transform.World);
+                    get_translation(right_last_position, right_hand_transform.World);
                     transform_position(right_last_position, right_last_position, transform.Self);
 
                     if (transform.Parent) {
@@ -195,7 +206,7 @@ function update(game: Game, entity: Entity) {
                     transform.Kind = TransformKind.Gyroscope;
                     transform.Dirty = true;
                 } else {
-                    get_translation(right_curr_position, hand_transform.World);
+                    get_translation(right_curr_position, right_hand_transform.World);
                     transform_position(right_curr_position, right_curr_position, transform.Self);
                     subtract(right_offset, right_last_position, right_curr_position);
                     vec3_copy(right_last_position, right_curr_position);
@@ -210,7 +221,6 @@ function update(game: Game, entity: Entity) {
             right_climbing = false;
         }
 
-        let rigid_body = game.World.RigidBody[entity];
         if (left_climbing || right_climbing) {
             rigid_body.Kind = RigidKind.Kinematic;
         } else {
