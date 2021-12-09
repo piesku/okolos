@@ -9,6 +9,8 @@ if (process.argv.length !== 3) {
     process.exit(1);
 }
 
+let mesh = "Cube";
+
 process.stdin.resume();
 let json = readFileSync(process.stdin.fd, "utf8");
 process.stdin.pause();
@@ -24,7 +26,7 @@ let blueprint_name = process.argv[2]
 let vec = (arr) =>
     arr ? "[" + arr.map((v) => parseFloat(v.toFixed(2))).join(", ") + "]" : "undefined";
 
-let create_child = (mesh, translation, rotation, scale, color = [0.33, 0.33, 0.33, 1]) => {
+let create_child = (translation, rotation, scale, color = [0.33, 0.33, 0.33, 1]) => {
     return `
     [
         transform(${vec(translation)}, ${vec(rotation)}, [1, 1, 1]),
@@ -46,7 +48,7 @@ let create_child_with_children = (name, translation, rotation, scale) => {
     return `
     [
         transform(${vec(translation)}, ${vec(rotation)}, ${vec(scale)}),
-        children(...prop_${name}(game)), ${anim}
+        children(prop_${name}(game)), ${anim}
     ]`;
 };
 
@@ -62,7 +64,35 @@ let nodes = gltf.nodes;
 //     acc[index] = colors[curr.primitives[0].material];
 //     return acc;
 // }, {});
-
+const colors = [
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0.33, 0.33, 0.33],
+    [0, 0, 0],
+    [1, 1, 1],
+];
 let blueprint_elements = [];
 let animated_parts = ["body", "left_hand", "right_hand", "left_leg", "right_leg"];
 
@@ -70,17 +100,22 @@ let props = nodes.reduce((acc, node) => {
     if (node.name.includes(".")) {
         // prop
         const split_name = node.name.split(".");
-        const mesh = split_name[0];
+        // const mesh = split_name[0];
         const name = split_name[1];
-        acc[name] = acc[name] || [];
-        acc[name].push(
-            create_child(
-                mesh,
-                node.translation,
-                node.rotation,
-                node.scale && node.scale.map((e) => e * 2)
-            )
+        acc[name] = acc[name] || {views: [], colors: []};
+
+        let view = from_rotation_translation_scale(
+            [],
+            node.rotation,
+            node.translation,
+            node.scale //&& node.scale.map((e) => e * 2)
         );
+
+        acc[name].views = acc[name].views.concat(view);
+        // get random element from colors
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        acc[name].colors.push(...color);
     } else if (node.name !== "root") {
         // blueprint
         blueprint_elements.push(
@@ -88,7 +123,7 @@ let props = nodes.reduce((acc, node) => {
                 node.name,
                 node.translation,
                 node.rotation,
-                node.scale && node.scale.map((e) => e * 2)
+                node.scale //&& node.scale.map((e) => e * 2)
             )
         );
     }
@@ -96,21 +131,22 @@ let props = nodes.reduce((acc, node) => {
 }, {});
 
 let result = `\
-import {animate} from "../components/com_animate.js";
-import {children} from "../components/com_children.js";
-import {collide} from "../components/com_collide.js";
-import {render_colored_shaded} from "../components/com_render.js";
-import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
-import {transform} from "../components/com_transform.js";
-import {Game, Layer} from "../game.js";
-import {kolos1_anims} from "./animation_blu_kolos1.js";
+import { animate } from "../components/com_animate.js";
+import { children } from "../components/com_children.js";
+import { render_instanced } from "../components/com_render.js";
+import { transform } from "../components/com_transform.js";
+import { Game } from "../game.js";
+import { kolos1_anims } from "./animation_blu_kolos1.js";
 
 ${Object.keys(props)
     .map((name) => {
         return `
 export function prop_${name}(game: Game) {
     return [
-        ${props[name].join(", ")}
+        transform(),
+        render_instanced(game.MeshCube, Float32Array.from(${vec(
+            props[name].views
+        )}), Float32Array.from(${vec(props[name].colors)}))
     ];
 }`;
     })
@@ -124,3 +160,43 @@ export function blue_${blueprint_name}(game: Game) {
 `;
 
 console.log(result);
+
+function from_rotation_translation_scale(out, q = [0, 0, 0, 1], v = [0, 0, 0], s = [2, 2, 2]) {
+    // Quaternion math
+    let x = q[0],
+        y = q[1],
+        z = q[2],
+        w = q[3];
+    let x2 = x + x;
+    let y2 = y + y;
+    let z2 = z + z;
+    let xx = x * x2;
+    let xy = x * y2;
+    let xz = x * z2;
+    let yy = y * y2;
+    let yz = y * z2;
+    let zz = z * z2;
+    let wx = w * x2;
+    let wy = w * y2;
+    let wz = w * z2;
+    let sx = s[0];
+    let sy = s[1];
+    let sz = s[2];
+    out[0] = (1 - (yy + zz)) * sx;
+    out[1] = (xy + wz) * sx;
+    out[2] = (xz - wy) * sx;
+    out[3] = 0;
+    out[4] = (xy - wz) * sy;
+    out[5] = (1 - (xx + zz)) * sy;
+    out[6] = (yz + wx) * sy;
+    out[7] = 0;
+    out[8] = (xz + wy) * sz;
+    out[9] = (yz - wx) * sz;
+    out[10] = (1 - (xx + yy)) * sz;
+    out[11] = 0;
+    out[12] = v[0];
+    out[13] = v[1];
+    out[14] = v[2];
+    out[15] = 1;
+    return out;
+}

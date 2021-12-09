@@ -3,13 +3,13 @@ import {from_rotation_translation_scale} from "../../common/mat4.js";
 import {from_euler} from "../../common/quat.js";
 import {float, set_seed} from "../../common/random.js";
 import {blueprint_camera} from "../blueprints/blu_camera.js";
-import {blue_kolos1} from "../blueprints/blu_kolos1.js";
+import {blue_mech} from "../blueprints/blu_mech.js";
 import {blueprint_viewer} from "../blueprints/blu_viewer.js";
 import {collide} from "../components/com_collide.js";
 import {control_always} from "../components/com_control_always.js";
 import {light_directional} from "../components/com_light.js";
 import {move} from "../components/com_move.js";
-import {render_instanced} from "../components/com_render.js";
+import {render_colored_shaded, render_instanced} from "../components/com_render.js";
 import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
 import {transform} from "../components/com_transform.js";
 import {Game, Layer} from "../game.js";
@@ -24,10 +24,22 @@ export function scene_stage(game: Game) {
     game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
 
     // Camera.
-    instantiate(game, [...blueprint_camera(game), transform([0, 2, 0], [0, 1, 0, 0])]);
+    instantiate(game, [...blueprint_camera(game), transform([0, 100, 70], [0, 1, 0, 0])]);
 
     // VR Camera.
-    instantiate(game, [...blueprint_viewer(game), transform([0, 50, 0], [0, 1, 0, 0])]);
+    instantiate(game, [...blueprint_viewer(game), transform([0, 100, 70], [0, 1, 0, 0])]);
+
+    instantiate(game, [
+        transform([0, 90, 70], [0, 0, 0, 1], [10, 0, 10]),
+        collide(false, Layer.Terrain, Layer.None),
+        rigid_body(RigidKind.Static),
+        render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
+            float(0, 1),
+            float(0, 1),
+            float(0, 1),
+            1,
+        ]),
+    ]);
 
     // Light.
     instantiate(game, [transform([2, 4, 3]), light_directional([1, 1, 1], 1)]);
@@ -36,7 +48,7 @@ export function scene_stage(game: Game) {
     let floating_count = 50;
     let ground_x = 10;
     let ground_z = 10;
-    let ground_size = 10;
+    let ground_size = 50;
 
     instantiate(game, [
         transform(undefined, undefined, [ground_x * ground_size, 3, ground_z * ground_size]),
@@ -69,24 +81,24 @@ export function scene_stage(game: Game) {
     }
 
     // Rubble on the ground.
-    for (let i = ground_x * ground_z; i < element_count; i++) {
-        let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
-        from_rotation_translation_scale(
-            view,
-            from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
-            [
-                float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
-                0,
-                float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
-            ],
-            [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
-        );
+    // for (let i = ground_x * ground_z; i < element_count; i++) {
+    //     let view = new Float32Array(matrices.buffer, i * 4 * 16, 16);
+    //     from_rotation_translation_scale(
+    //         view,
+    //         from_euler([0, 0, 0, 1], float(-90, 90), float(-90, 90), float(-90, 90)),
+    //         [
+    //             float((-ground_size * ground_x) / 2, (ground_size * ground_x) / 2),
+    //             0,
+    //             float((-ground_size * ground_z) / 2, (ground_size * ground_z) / 2),
+    //         ],
+    //         [float(0.1, 0.5), float(0.5, 5), float(0.1, 0.5)]
+    //     );
 
-        let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
-        color[0] = float(0, 1);
-        color[1] = float(0, 1);
-        color[2] = float(0, 1);
-    }
+    //     let color = new Float32Array(colors.buffer, i * 4 * 3, 3);
+    //     color[0] = float(0, 1);
+    //     color[1] = float(0, 1);
+    //     color[2] = float(0, 1);
+    // }
 
     instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices, colors)]);
 
@@ -114,19 +126,15 @@ export function scene_stage(game: Game) {
     //     ]);
     // }
 
-    instantiate(game, [transform([10, 0, -10]), ...blue_kolos1(game)]);
-
     instantiate(game, [
-        transform([-20, -2, 30], from_euler([0, 0, 0, 1], 0, 180, 0)),
-        move(2, 0),
-        ...blue_kolos1(game),
-        control_always([0, 0, 1], null, "walk"),
+        transform([0, -2, -20], from_euler([0, 0, 0, 1], 0, 180, 0)),
+        ...blue_mech(game),
     ]);
 
     instantiate(game, [
-        transform([-20, -2, 1], from_euler([0, 0, 0, 1], 0, 180, 0)),
+        transform([-100, -2, 100], from_euler([0, 0, 0, 1], 0, 0, 0)),
         move(2, 0),
-        ...blue_kolos1(game),
-        control_always([0, 0, 1], null, "walk"),
+        ...blue_mech(game),
+        control_always([0, 0, -1], null, "walk"),
     ]);
 }

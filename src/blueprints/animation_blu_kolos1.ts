@@ -1,6 +1,6 @@
 import {from_euler} from "../../common/quat.js";
 
-let speed = 8;
+let speed = 25;
 
 export const kolos1_anims = {
     body: {
