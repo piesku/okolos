@@ -124,7 +124,7 @@ export function scene_stage(game: Game) {
     ]);
 
     instantiate(game, [
-        transform([-20, -2, 100], from_euler([0, 0, 0, 1], 0, 180, 0)),
+        transform([-20, -2, 1], from_euler([0, 0, 0, 1], 0, 180, 0)),
         move(2, 0),
         ...blue_kolos1(game),
         control_always([0, 0, 1], null, "walk"),
