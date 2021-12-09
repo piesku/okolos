@@ -8,7 +8,13 @@ import {Entity} from "../../common/world.js";
 import {Game} from "../game.js";
 import {Has, World} from "../world.js";
 
+export const enum TransformKind {
+    Regular,
+    Gyroscope,
+}
+
 export interface Transform {
+    Kind: TransformKind;
     /** Absolute matrix relative to the world. */
     World: Mat4;
     /** World to self matrix. */
@@ -31,6 +37,7 @@ export function transform(
     return (game: Game, entity: Entity) => {
         game.World.Signature[entity] |= Has.Transform;
         game.World.Transform[entity] = {
+            Kind: TransformKind.Regular,
             World: create(),
             Self: create(),
             Translation: translation,
@@ -38,6 +45,13 @@ export function transform(
             Scale: scale,
             Dirty: true,
         };
+    };
+}
+
+export function with_gyroscope() {
+    return (game: Game, entity: Entity) => {
+        let transform = game.World.Transform[entity];
+        transform.Kind = TransformKind.Gyroscope;
     };
 }
 

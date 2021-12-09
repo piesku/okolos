@@ -1,6 +1,12 @@
-import {from_rotation_translation_scale, invert, multiply} from "../../common/mat4.js";
+import {
+    from_rotation_translation_scale,
+    get_translation,
+    invert,
+    multiply,
+} from "../../common/mat4.js";
+import {Vec3} from "../../common/math.js";
 import {Entity} from "../../common/world.js";
-import {Transform} from "../components/com_transform.js";
+import {Transform, TransformKind} from "../components/com_transform.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
 
@@ -17,6 +23,8 @@ export function sys_transform(game: Game, delta: number) {
     }
 }
 
+const world_position: Vec3 = [0, 0, 0];
+
 function update_transform(game: Game, entity: Entity, transform: Transform) {
     transform.Dirty = false;
 
@@ -30,6 +38,16 @@ function update_transform(game: Game, entity: Entity, transform: Transform) {
     if (transform.Parent !== undefined) {
         let parent_transform = game.World.Transform[transform.Parent];
         multiply(transform.World, parent_transform.World, transform.World);
+
+        if (transform.Kind === TransformKind.Gyroscope) {
+            get_translation(world_position, transform.World);
+            from_rotation_translation_scale(
+                transform.World,
+                transform.Rotation,
+                world_position,
+                transform.Scale
+            );
+        }
     }
 
     invert(transform.Self, transform.World);
