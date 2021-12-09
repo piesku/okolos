@@ -31,7 +31,7 @@ export function scene_stage(game: Game) {
 
     instantiate(game, [
         transform([0, 90, 70], [0, 0, 0, 1], [10, 0, 10]),
-        collide(false, Layer.Terrain, Layer.None),
+        collide(false, Layer.Ground, Layer.None),
         rigid_body(RigidKind.Static),
         render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
             float(0, 1),
