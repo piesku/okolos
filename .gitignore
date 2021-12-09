@@ -1,3 +1,4 @@
 node_modules
 *.js
 play/index.html
+!vox-parser.js
