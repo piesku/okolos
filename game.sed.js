@@ -1863,13 +1863,6 @@ out[2] = az * bw + aw * bz + ax * by - ay * bx;
 out[3] = aw * bw - ax * bx - ay * by - az * bz;
 return out;
 }
-function conjugate(out, a) {
-out[0] = -a[0];
-out[1] = -a[1];
-out[2] = -a[2];
-out[3] = a[3];
-return out;
-}
 /**
 * Compute a quaternion out of three Euler angles given in degrees. The order of rotation is YXZ.
 * @param out Quaternion to write to.
@@ -2199,72 +2192,23 @@ out[14] = -2 * near;
 }
 return out;
 }
+function get_forward(out, mat) {
+out[0] = mat[8];
+out[1] = mat[9];
+out[2] = mat[10];
+return normalize(out, out);
+}
 function get_translation(out, mat) {
 out[0] = mat[12];
 out[1] = mat[13];
 out[2] = mat[14];
 return out;
 }
-function get_scaling(out, mat) {
-let m11 = mat[0];
-let m12 = mat[1];
-let m13 = mat[2];
-let m21 = mat[4];
-let m22 = mat[5];
-let m23 = mat[6];
-let m31 = mat[8];
-let m32 = mat[9];
-let m33 = mat[10];
-out[0] = Math.hypot(m11, m12, m13);
-out[1] = Math.hypot(m21, m22, m23);
-out[2] = Math.hypot(m31, m32, m33);
-return out;
-}
-function get_rotation(out, mat) {
-let scaling = get_scaling([0, 0, 0], mat);
-let is1 = 1 / scaling[0];
-let is2 = 1 / scaling[1];
-let is3 = 1 / scaling[2];
-let sm11 = mat[0] * is1;
-let sm12 = mat[1] * is2;
-let sm13 = mat[2] * is3;
-let sm21 = mat[4] * is1;
-let sm22 = mat[5] * is2;
-let sm23 = mat[6] * is3;
-let sm31 = mat[8] * is1;
-let sm32 = mat[9] * is2;
-let sm33 = mat[10] * is3;
-let trace = sm11 + sm22 + sm33;
-let S = 0;
-if (trace > 0) {
-S = Math.sqrt(trace + 1.0) * 2;
-out[3] = 0.25 * S;
-out[0] = (sm23 - sm32) / S;
-out[1] = (sm31 - sm13) / S;
-out[2] = (sm12 - sm21) / S;
-}
-else if (sm11 > sm22 && sm11 > sm33) {
-S = Math.sqrt(1.0 + sm11 - sm22 - sm33) * 2;
-out[3] = (sm23 - sm32) / S;
-out[0] = 0.25 * S;
-out[1] = (sm12 + sm21) / S;
-out[2] = (sm31 + sm13) / S;
-}
-else if (sm22 > sm33) {
-S = Math.sqrt(1.0 + sm22 - sm11 - sm33) * 2;
-out[3] = (sm31 - sm13) / S;
-out[0] = (sm12 + sm21) / S;
-out[1] = 0.25 * S;
-out[2] = (sm23 + sm32) / S;
-}
-else {
-S = Math.sqrt(1.0 + sm33 - sm11 - sm22) * 2;
-out[3] = (sm12 - sm21) / S;
-out[0] = (sm31 + sm13) / S;
-out[1] = (sm23 + sm32) / S;
-out[2] = 0.25 * S;
-}
-return out;
+function distance_squared(a, b) {
+let x = b[12] - a[12];
+let y = b[13] - a[13];
+let z = b[14] - a[14];
+return x * x + y * y + z * z;
 }
 function distance_squared_from_point(m, v) {
 let x = m[12] - v[0];
@@ -2568,6 +2512,8 @@ update$6(game, i);
 }
 }
 const AXIS_Y$1 = [0, 1, 0];
+const GLIDE_HAND_DIST_MIN = 1;
+const GLIDE_HAND_DIST_MAX = 3;
 let left_climbing = false;
 let left_last_position = [0, 0, 0];
 let left_curr_position = [0, 0, 0];
@@ -2580,6 +2526,7 @@ function update$6(game, entity) {
 let transform = game.World.Transform[entity];
 let children = game.World.Children[entity];
 let control = game.World.ControlPlayer[entity];
+let rigid_body = game.World.RigidBody[entity];
 if (control.Kind === 0 /* Motion */) {
 let move = game.World.Move[entity];
 let bob_entity = children.Children[0];
@@ -2628,20 +2575,35 @@ multiply$1(move.LocalRotation, move.LocalRotation, rotation);
 }
 }
 let left_hand_entity = bob_children.Children[2];
+let left_hand_transform = game.World.Transform[left_hand_entity];
 let left_hand_control = game.World.ControlXr[left_hand_entity];
 let right_hand_entity = bob_children.Children[3];
+let right_hand_transform = game.World.Transform[right_hand_entity];
 let right_hand_control = game.World.ControlXr[right_hand_entity];
 
-if (left_hand_entity && (left_hand_control === null || left_hand_control === void 0 ? void 0 : left_hand_control.Squeezed)) {
-let hand_transform = game.World.Transform[left_hand_entity];
+let hands_apart = distance_squared(left_hand_transform.World, right_hand_transform.World);
+if (hands_apart > GLIDE_HAND_DIST_MIN && rigid_body.IsAirborne) {
+let amount_y = map_range(hands_apart, GLIDE_HAND_DIST_MIN, GLIDE_HAND_DIST_MAX, 5, 1);
+let amount_xz = map_range(hands_apart, GLIDE_HAND_DIST_MIN, GLIDE_HAND_DIST_MAX, 6, 9);
+let forward = [0, 0, 0];
+get_forward(forward, head_transform.World);
+
+negate(forward, forward);
+rigid_body.VelocityResolved[0] = amount_xz * forward[0];
+rigid_body.VelocityResolved[1] = -amount_y; 
+rigid_body.VelocityResolved[2] = amount_xz * forward[2];
+rigid_body.Acceleration[1] += 3; 
+}
+
+if (left_hand_control.Squeezed) {
 let hand_collide = game.World.Collide[left_hand_entity];
 if (hand_collide.Collisions.length > 0) {
-let climbed_entity = hand_collide.Collisions[0].Other;
-let climbed_transform = game.World.Transform[climbed_entity];
-let climbed_children = game.World.Children[climbed_entity];
+let climb_entity = hand_collide.Collisions[0].Other;
+let climb_transform = game.World.Transform[climb_entity];
+let climb_children = game.World.Children[climb_entity];
 if (!left_climbing) {
 left_climbing = true;
-get_translation(left_last_position, hand_transform.World);
+get_translation(left_last_position, left_hand_transform.World);
 transform_position(left_last_position, left_last_position, transform.Self);
 if (transform.Parent) {
 
@@ -2649,26 +2611,21 @@ let another_climbed_children = game.World.Children[transform.Parent];
 another_climbed_children.Children.pop();
 }
 
-climbed_children.Children.push(entity);
-transform.Parent = climbed_entity;
+climb_children.Children.push(entity);
+transform.Parent = climb_entity;
 
 get_translation(transform.Translation, transform.World);
-transform_position(transform.Translation, transform.Translation, climbed_transform.Self);
-
-let climbed_world_rotation = [0, 0, 0, 1];
-get_rotation(climbed_world_rotation, climbed_transform.World);
-conjugate(climbed_world_rotation, climbed_world_rotation);
-get_rotation(transform.Rotation, transform.World);
-multiply$1(transform.Rotation, climbed_world_rotation, transform.Rotation);
+transform_position(transform.Translation, transform.Translation, climb_transform.Self);
+transform.Kind = 1 /* Gyroscope */;
 transform.Dirty = true;
 }
 else {
-get_translation(left_curr_position, hand_transform.World);
+get_translation(left_curr_position, left_hand_transform.World);
 transform_position(left_curr_position, left_curr_position, transform.Self);
 subtract(left_offset, left_last_position, left_curr_position);
 copy$1(left_last_position, left_curr_position);
 transform_direction(left_offset, left_offset, transform.World);
-transform_direction(left_offset, left_offset, climbed_transform.Self);
+transform_direction(left_offset, left_offset, climb_transform.Self);
 add(transform.Translation, transform.Translation, left_offset);
 transform.Dirty = true;
 }
@@ -2678,16 +2635,15 @@ else if (left_climbing) {
 left_climbing = false;
 }
 
-if (right_hand_entity && (right_hand_control === null || right_hand_control === void 0 ? void 0 : right_hand_control.Squeezed)) {
-let hand_transform = game.World.Transform[right_hand_entity];
+if (right_hand_control.Squeezed) {
 let hand_collide = game.World.Collide[right_hand_entity];
 if (hand_collide.Collisions.length > 0) {
-let climbed_entity = hand_collide.Collisions[0].Other;
-let climbed_transform = game.World.Transform[climbed_entity];
-let climbed_children = game.World.Children[climbed_entity];
+let climb_entity = hand_collide.Collisions[0].Other;
+let climb_transform = game.World.Transform[climb_entity];
+let climb_children = game.World.Children[climb_entity];
 if (!right_climbing) {
 right_climbing = true;
-get_translation(right_last_position, hand_transform.World);
+get_translation(right_last_position, right_hand_transform.World);
 transform_position(right_last_position, right_last_position, transform.Self);
 if (transform.Parent) {
 
@@ -2695,26 +2651,21 @@ let another_climbed_children = game.World.Children[transform.Parent];
 another_climbed_children.Children.pop();
 }
 
-climbed_children.Children.push(entity);
-transform.Parent = climbed_entity;
+climb_children.Children.push(entity);
+transform.Parent = climb_entity;
 
 get_translation(transform.Translation, transform.World);
-transform_position(transform.Translation, transform.Translation, climbed_transform.Self);
-
-let climbed_world_rotation = [0, 0, 0, 1];
-get_rotation(climbed_world_rotation, climbed_transform.World);
-conjugate(climbed_world_rotation, climbed_world_rotation);
-get_rotation(transform.Rotation, transform.World);
-multiply$1(transform.Rotation, climbed_world_rotation, transform.Rotation);
+transform_position(transform.Translation, transform.Translation, climb_transform.Self);
+transform.Kind = 1 /* Gyroscope */;
 transform.Dirty = true;
 }
 else {
-get_translation(right_curr_position, hand_transform.World);
+get_translation(right_curr_position, right_hand_transform.World);
 transform_position(right_curr_position, right_curr_position, transform.Self);
 subtract(right_offset, right_last_position, right_curr_position);
 copy$1(right_last_position, right_curr_position);
 transform_direction(right_offset, right_offset, transform.World);
-transform_direction(right_offset, right_offset, climbed_transform.Self);
+transform_direction(right_offset, right_offset, climb_transform.Self);
 add(transform.Translation, transform.Translation, right_offset);
 transform.Dirty = true;
 }
@@ -2723,7 +2674,6 @@ transform.Dirty = true;
 else if (right_climbing) {
 right_climbing = false;
 }
-let rigid_body = game.World.RigidBody[entity];
 if (left_climbing || right_climbing) {
 rigid_body.Kind = 2 /* Kinematic */;
 }
@@ -2738,7 +2688,7 @@ climbed_children.Children.pop();
 transform.Parent = undefined;
 
 get_translation(transform.Translation, transform.World);
-get_rotation(transform.Rotation, transform.World);
+transform.Kind = 0 /* Regular */;
 transform.Dirty = true;
 }
 }
@@ -2921,6 +2871,7 @@ function transform(translation = [0, 0, 0], rotation = [0, 0, 0, 1], scale = [1,
 return (game, entity) => {
 game.World.Signature[entity] |= 2048 /* Transform */;
 game.World.Transform[entity] = {
+Kind: 0 /* Regular */,
 World: create(),
 Self: create(),
 Translation: translation,
@@ -3382,12 +3333,17 @@ update_transform(game, i, transform);
 }
 }
 }
+const world_position = [0, 0, 0];
 function update_transform(game, entity, transform) {
 transform.Dirty = false;
 from_rotation_translation_scale(transform.World, transform.Rotation, transform.Translation, transform.Scale);
 if (transform.Parent !== undefined) {
 let parent_transform = game.World.Transform[transform.Parent];
 multiply(transform.World, parent_transform.World, transform.World);
+if (transform.Kind === 1 /* Gyroscope */) {
+get_translation(world_position, transform.World);
+from_rotation_translation_scale(transform.World, transform.Rotation, world_position, transform.Scale);
+}
 }
 invert(transform.Self, transform.World);
 if (game.World.Signature[entity] & 4 /* Children */) {
