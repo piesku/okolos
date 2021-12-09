@@ -1,10 +1,12 @@
 import {distance_squared, get_forward, get_translation} from "../../common/mat4.js";
 import {Vec3} from "../../common/math.js";
+import {map_range} from "../../common/number.js";
 import {from_axis, multiply as quat_multiply} from "../../common/quat.js";
 import {
     add,
     copy as vec3_copy,
     length,
+    negate,
     subtract,
     transform_direction,
     transform_position,
@@ -31,6 +33,8 @@ export function sys_control_player(game: Game, delta: number) {
 }
 
 const AXIS_Y: Vec3 = [0, 1, 0];
+const GLIDE_HAND_DIST_MIN = 1;
+const GLIDE_HAND_DIST_MAX = 3;
 
 let left_climbing = false;
 let left_last_position: Vec3 = [0, 0, 0];
@@ -112,13 +116,17 @@ function update(game: Game, entity: Entity) {
 
         // Gliding.
         let hands_apart = distance_squared(left_hand_transform.World, right_hand_transform.World);
-        if (hands_apart > 1 && rigid_body.IsAirborne) {
+        if (hands_apart > GLIDE_HAND_DIST_MIN && rigid_body.IsAirborne) {
+            let amount_y = map_range(hands_apart, GLIDE_HAND_DIST_MIN, GLIDE_HAND_DIST_MAX, 5, 1);
+            let amount_xz = map_range(hands_apart, GLIDE_HAND_DIST_MIN, GLIDE_HAND_DIST_MAX, 6, 9);
             let forward: Vec3 = [0, 0, 0];
             get_forward(forward, head_transform.World);
-            rigid_body.VelocityResolved[0] = -3 * forward[0];
-            rigid_body.VelocityResolved[1] = -3;
-            rigid_body.VelocityResolved[2] = -3 * forward[2];
-            rigid_body.Acceleration[1] += 3;
+            // The head looks backwards in WebXR.
+            negate(forward, forward);
+            rigid_body.VelocityResolved[0] = amount_xz * forward[0];
+            rigid_body.VelocityResolved[1] = -amount_y; // Descend at a slow pace.
+            rigid_body.VelocityResolved[2] = amount_xz * forward[2];
+            rigid_body.Acceleration[1] += 3; // Simulate air drag which near-counters the gravity.
         }
 
         // Climbing with the left hand.
