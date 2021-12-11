@@ -3,6 +3,7 @@ import {from_rotation_translation_scale} from "../../common/mat4.js";
 import {from_euler} from "../../common/quat.js";
 import {float, set_seed} from "../../common/random.js";
 import {blueprint_camera} from "../blueprints/blu_camera.js";
+import {blueprint_climbable} from "../blueprints/blu_climbable.js";
 import {blue_mech} from "../blueprints/blu_mech.js";
 import {blueprint_viewer} from "../blueprints/blu_viewer.js";
 import {children} from "../components/com_children.js";
@@ -33,16 +34,13 @@ export function scene_stage(game: Game) {
     // Starting platform.
     instantiate(game, [
         transform([0, 90, 70], [0, 0, 0, 1], [10, 1, 10]),
-        collide(false, Layer.Solid | Layer.Climbable, Layer.None),
-        rigid_body(RigidKind.Static),
+        ...blueprint_climbable(RigidKind.Static),
         render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
             float(0, 1),
             float(0, 1),
             float(0, 1),
             1,
         ]),
-        // Required for climbing.
-        children(),
     ]);
 
     // Rotating cube to practice bouldering.
@@ -53,16 +51,13 @@ export function scene_stage(game: Game) {
         move(1, 0.1),
         children([
             transform([0, 0, 20], undefined, [10, 10, 10]),
-            collide(true, Layer.Solid | Layer.Climbable, Layer.None),
-            rigid_body(RigidKind.Kinematic),
+            ...blueprint_climbable(RigidKind.Kinematic),
             render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
                 float(0, 1),
                 float(0, 1),
                 float(0, 1),
                 1,
             ]),
-            // Required for climbing.
-            children(),
         ]),
     ]);
 
