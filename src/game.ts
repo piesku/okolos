@@ -4,8 +4,11 @@ import {Entity} from "../common/world.js";
 import {mat_forward_colored_gouraud} from "../materials/mat_forward_colored_gouraud.js";
 import {mat_forward_colored_wireframe} from "../materials/mat_forward_colored_unlit.js";
 import {mat_forward_instanced} from "../materials/mat_forward_instanced.js";
+import {mat_forward_textured_gouraud} from "../materials/mat_forward_textured_gouraud.js";
+import {mat_forward_textured_unlit} from "../materials/mat_forward_textured_unlit.js";
 import {mesh_cube} from "../meshes/cube.js";
 import {mesh_hand} from "../meshes/hand.js";
+import {mesh_wallA} from "../meshes/wallA.js";
 import {sys_animate} from "./systems/sys_animate.js";
 import {sys_camera} from "./systems/sys_camera.js";
 import {sys_collide} from "./systems/sys_collide.js";
@@ -35,11 +38,18 @@ export class Game extends Game3D {
     XrFrame?: XRFrame;
     XrInputs: Record<string, XRInputSource> = {};
 
+    Textures: Record<string, WebGLTexture> = {};
+
     MaterialColoredWireframe = mat_forward_colored_wireframe(this.Gl);
     MaterialColoredGouraud = mat_forward_colored_gouraud(this.Gl);
+    MaterialTexturedGouraud = mat_forward_textured_gouraud(this.Gl);
+    MaterialTexturedUnlit = mat_forward_textured_unlit(this.Gl);
     MaterialInstanced = mat_forward_instanced(this.Gl);
+
     MeshCube = mesh_cube(this.Gl);
     MeshHand = mesh_hand(this.Gl);
+
+    MeshWallA = mesh_wallA(this.Gl);
 
     Cameras: Array<Entity> = [];
     // The rendering pipeline supports 8 lights.
