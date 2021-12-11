@@ -40,7 +40,7 @@ export function blueprint_viewer(game: Game) {
                             children([
                                 // Head's collider is below the head.
                                 transform([0, -0.5, 0]),
-                                collide(true, Layer.Player, Layer.Ground, [0.1, 1, 0.1]),
+                                collide(true, Layer.Player, Layer.Solid, [0.2, 1, 0.2]),
                                 callback((game, entity) => {
                                     // The player's rigis body uses this collider.
                                     let rigid_body = game.World.RigidBody[player_entity];
