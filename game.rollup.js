@@ -2881,6 +2881,12 @@
             };
         };
     }
+    function with_gyroscope() {
+        return (game, entity) => {
+            let transform = game.World.Transform[entity];
+            transform.Kind = 1 /* Gyroscope */;
+        };
+    }
 
     /**
      * @module systems/sys_light
@@ -3031,7 +3037,7 @@
     /**
      * @module systems/sys_physics_resolve
      */
-    const QUERY$2 = 2048 /* Transform */ | 8 /* Collide */ | 1024 /* RigidBody */;
+    const QUERY$2 = 2048 /* Transform */ | 1024 /* RigidBody */;
     function sys_physics_resolve(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
             if ((game.World.Signature[i] & QUERY$2) === QUERY$2) {
@@ -3043,8 +3049,8 @@
     let a = [0, 0, 0];
     function update(game, entity) {
         let transform = game.World.Transform[entity];
-        let collide = game.World.Collide[entity];
         let rigid_body = game.World.RigidBody[entity];
+        let collide = game.World.Collide[rigid_body.ColliderId];
         if (rigid_body.Kind === 1 /* Dynamic */) {
             rigid_body.IsAirborne = true;
             let has_collision = false;
@@ -3619,6 +3625,65 @@
     function blueprint_camera(game) {
         return [
             children([transform(undefined, [0, 1, 0, 0]), camera_forward_perspective(1, 0.1, 1000)]),
+        ];
+    }
+
+    /**
+     * @module components/com_collide
+     */
+    /**
+     * Add the Collide component.
+     *
+     * @param dynamic Dynamic colliders collider with all colliders. Static
+     * colliders collide only with dynamic colliders.
+     * @param layers Bit field with layers this collider is on.
+     * @param mask Bit mask with layers visible to this collider.
+     * @param size Size of the collider relative to the entity's transform.
+     */
+    function collide(dynamic, layers, mask, size = [1, 1, 1]) {
+        return (game, entity) => {
+            game.World.Signature[entity] |= 8 /* Collide */;
+            game.World.Collide[entity] = {
+                EntityId: entity,
+                New: true,
+                Dynamic: dynamic,
+                Layers: layers,
+                Mask: mask,
+                Size: size,
+                Min: [0, 0, 0],
+                Max: [0, 0, 0],
+                Center: [0, 0, 0],
+                Half: [0, 0, 0],
+                Collisions: [],
+            };
+        };
+    }
+
+    /**
+     * @module components/com_rigid_body
+     */
+    function rigid_body(kind, bounciness = 0.5) {
+        return (game, entity) => {
+            game.World.Signature[entity] |= 1024 /* RigidBody */;
+            game.World.RigidBody[entity] = {
+                Kind: kind,
+                ColliderId: entity,
+                Bounciness: bounciness,
+                Acceleration: [0, 0, 0],
+                VelocityIntegrated: [0, 0, 0],
+                VelocityResolved: [0, 0, 0],
+                LastPosition: [0, 0, 0],
+                IsAirborne: false,
+            };
+        };
+    }
+
+    function blueprint_climbable(rigid_kind, size = [1, 1, 1]) {
+        return [
+            collide(rigid_kind !== 0 /* Static */, 2 /* Solid */ | 4 /* Climbable */, 0 /* None */, size),
+            rigid_body(rigid_kind),
+            // Required for attaching to the climbable.
+            children(),
         ];
     }
 
@@ -9759,33 +9824,11 @@
     }
 
     /**
-     * @module components/com_collide
+     * @module components/com_callback
      */
-    /**
-     * Add the Collide component.
-     *
-     * @param dynamic Dynamic colliders collider with all colliders. Static
-     * colliders collide only with dynamic colliders.
-     * @param layers Bit field with layers this collider is on.
-     * @param mask Bit mask with layers visible to this collider.
-     * @param size Size of the collider relative to the entity's transform.
-     */
-    function collide(dynamic, layers, mask, size = [1, 1, 1]) {
+    function callback(fn) {
         return (game, entity) => {
-            game.World.Signature[entity] |= 8 /* Collide */;
-            game.World.Collide[entity] = {
-                EntityId: entity,
-                New: true,
-                Dynamic: dynamic,
-                Layers: layers,
-                Mask: mask,
-                Size: size,
-                Min: [0, 0, 0],
-                Max: [0, 0, 0],
-                Center: [0, 0, 0],
-                Half: [0, 0, 0],
-                Collisions: [],
-            };
+            fn(game, entity);
         };
     }
 
@@ -9831,28 +9874,11 @@
         };
     }
 
-    /**
-     * @module components/com_rigid_body
-     */
-    function rigid_body(kind, bounciness = 0.5) {
-        return (game, entity) => {
-            game.World.Signature[entity] |= 1024 /* RigidBody */;
-            game.World.RigidBody[entity] = {
-                Kind: kind,
-                Bounciness: bounciness,
-                Acceleration: [0, 0, 0],
-                VelocityIntegrated: [0, 0, 0],
-                VelocityResolved: [0, 0, 0],
-                LastPosition: [0, 0, 0],
-                IsAirborne: false,
-            };
-        };
-    }
-
     function blueprint_viewer(game) {
+        let player_entity;
         return [
+            callback((game, entity) => (player_entity = entity)),
             control_player(0 /* Motion */),
-            collide(true, 1 /* Player */, 2 /* Ground */, [0.1, 0.5, 0.1]),
             rigid_body(1 /* Dynamic */, 0.1),
             move(2, 1),
             children(
@@ -9867,11 +9893,26 @@
                     // Head (must be Children[1]).
                     transform(),
                     control_xr(0 /* Head */),
+                    children([
+                        // Ignore the head's rotation.
+                        transform(),
+                        with_gyroscope(),
+                        children([
+                            // Head's collider is below the head.
+                            transform([0, -0.5, 0]),
+                            collide(true, 1 /* Player */, 2 /* Solid */, [0.2, 1, 0.2]),
+                            callback((game, entity) => {
+                                // The player's rigis body uses this collider.
+                                let rigid_body = game.World.RigidBody[player_entity];
+                                rigid_body.ColliderId = entity;
+                            }),
+                        ]),
+                    ]),
                 ], [
                     // Left hand (must be Children[2]).
                     transform(),
                     control_xr(1 /* Left */),
-                    collide(true, 0 /* None */, 8 /* Climbable */, [0.1, 0.1, 0.1]),
+                    collide(true, 0 /* None */, 4 /* Climbable */, [0.1, 0.1, 0.1]),
                     children([
                         // The hand mesh; must be Children[0].
                         transform(undefined, undefined, [-1, 1, 1]),
@@ -9881,7 +9922,7 @@
                     // Right hand (must be Children[3]).
                     transform(),
                     control_xr(2 /* Right */),
-                    collide(true, 0 /* None */, 8 /* Climbable */, [0.1, 0.1, 0.1]),
+                    collide(true, 0 /* None */, 4 /* Climbable */, [0.1, 0.1, 0.1]),
                     children([
                         // The hand mesh; must be Children[0].
                         transform(),
@@ -9927,15 +9968,32 @@
         instantiate(game, [...blueprint_camera(), transform([0, 100, 70], [0, 1, 0, 0])]);
         // VR Camera.
         instantiate(game, [...blueprint_viewer(game), transform([0, 100, 70], [0, 1, 0, 0])]);
+        // Starting platform.
         instantiate(game, [
-            transform([0, 90, 70], [0, 0, 0, 1], [10, 0, 10]),
-            collide(false, 2 /* Ground */, 0 /* None */),
-            rigid_body(0 /* Static */),
+            transform([0, 90, 70], [0, 0, 0, 1], [10, 1, 10]),
+            ...blueprint_climbable(0 /* Static */),
             render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
                 float(0, 1),
                 float(0, 1),
                 float(0, 1),
                 1,
+            ]),
+        ]);
+        // Rotating cube to practice bouldering.
+        instantiate(game, [
+            transform([0, 5, 70]),
+            //control_always(null, [0, 1, 0, 0]),
+            control_always([0, 0, 1], null),
+            move(1, 0.1),
+            children([
+                transform([0, 0, 20], undefined, [10, 10, 10]),
+                ...blueprint_climbable(2 /* Kinematic */),
+                render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
+                    float(0, 1),
+                    float(0, 1),
+                    float(0, 1),
+                    1,
+                ]),
             ]),
         ]);
         // Light.
@@ -9946,7 +10004,7 @@
         let ground_size = 50;
         instantiate(game, [
             transform(undefined, undefined, [ground_x * ground_size, 3, ground_z * ground_size]),
-            collide(false, 4 /* Solid */ | 2 /* Ground */, 0 /* None */),
+            collide(false, 2 /* Solid */, 0 /* None */),
             rigid_body(0 /* Static */),
         ]);
         let element_count = rubble_count + ground_x * ground_z;
