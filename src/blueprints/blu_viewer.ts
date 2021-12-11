@@ -1,4 +1,6 @@
 import {GL_CCW, GL_CW} from "../../common/webgl.js";
+import {Entity} from "../../common/world.js";
+import {callback} from "../components/com_callback.js";
 import {camera_xr} from "../components/com_camera.js";
 import {children} from "../components/com_children.js";
 import {collide} from "../components/com_collide.js";
@@ -7,13 +9,14 @@ import {ControlXrKind, control_xr} from "../components/com_control_xr.js";
 import {move} from "../components/com_move.js";
 import {render_colored_shaded} from "../components/com_render.js";
 import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
-import {transform} from "../components/com_transform.js";
+import {transform, with_gyroscope} from "../components/com_transform.js";
 import {Game, Layer} from "../game.js";
 
 export function blueprint_viewer(game: Game) {
+    let player_entity: Entity;
     return [
+        callback((game, entity) => (player_entity = entity)),
         control_player(ControlPlayerKind.Motion),
-        collide(true, Layer.Player, Layer.Ground, [0.1, 0.5, 0.1]),
         rigid_body(RigidKind.Dynamic, 0.1),
         move(2, 1),
         children(
@@ -30,6 +33,21 @@ export function blueprint_viewer(game: Game) {
                         // Head (must be Children[1]).
                         transform(),
                         control_xr(ControlXrKind.Head),
+                        children([
+                            // Ignore the head's rotation.
+                            transform(),
+                            with_gyroscope(),
+                            children([
+                                // Head's collider is below the head.
+                                transform([0, -0.5, 0]),
+                                collide(true, Layer.Player, Layer.Ground, [0.1, 1, 0.1]),
+                                callback((game, entity) => {
+                                    // The player's rigis body uses this collider.
+                                    let rigid_body = game.World.RigidBody[player_entity];
+                                    rigid_body.ColliderId = entity;
+                                }),
+                            ]),
+                        ]),
                     ],
                     [
                         // Left hand (must be Children[2]).
