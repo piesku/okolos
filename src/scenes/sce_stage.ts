@@ -3,8 +3,10 @@ import {from_rotation_translation_scale} from "../../common/mat4.js";
 import {from_euler} from "../../common/quat.js";
 import {float, set_seed} from "../../common/random.js";
 import {blueprint_camera} from "../blueprints/blu_camera.js";
+import {blueprint_climbable} from "../blueprints/blu_climbable.js";
 import {blue_mech} from "../blueprints/blu_mech.js";
 import {blueprint_viewer} from "../blueprints/blu_viewer.js";
+import {children} from "../components/com_children.js";
 import {collide} from "../components/com_collide.js";
 import {control_always} from "../components/com_control_always.js";
 import {light_directional} from "../components/com_light.js";
@@ -29,15 +31,33 @@ export function scene_stage(game: Game) {
     // VR Camera.
     instantiate(game, [...blueprint_viewer(game), transform([0, 100, 70], [0, 1, 0, 0])]);
 
+    // Starting platform.
     instantiate(game, [
-        transform([0, 90, 70], [0, 0, 0, 1], [10, 0, 10]),
-        collide(false, Layer.Ground, Layer.None),
-        rigid_body(RigidKind.Static),
+        transform([0, 90, 70], [0, 0, 0, 1], [10, 1, 10]),
+        ...blueprint_climbable(RigidKind.Static),
         render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
             float(0, 1),
             float(0, 1),
             float(0, 1),
             1,
+        ]),
+    ]);
+
+    // Rotating cube to practice bouldering.
+    instantiate(game, [
+        transform([0, 5, 70]),
+        //control_always(null, [0, 1, 0, 0]),
+        control_always([0, 0, 1], null),
+        move(1, 0.1),
+        children([
+            transform([0, 0, 20], undefined, [10, 10, 10]),
+            ...blueprint_climbable(RigidKind.Kinematic),
+            render_colored_shaded(game.MaterialColoredGouraud, game.MeshCube, [
+                float(0, 1),
+                float(0, 1),
+                float(0, 1),
+                1,
+            ]),
         ]),
     ]);
 
@@ -52,7 +72,7 @@ export function scene_stage(game: Game) {
 
     instantiate(game, [
         transform(undefined, undefined, [ground_x * ground_size, 3, ground_z * ground_size]),
-        collide(false, Layer.Solid | Layer.Ground, Layer.None),
+        collide(false, Layer.Solid, Layer.None),
         rigid_body(RigidKind.Static),
     ]);
 

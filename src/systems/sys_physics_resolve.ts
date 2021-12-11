@@ -9,7 +9,7 @@ import {RigidKind} from "../components/com_rigid_body.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
 
-const QUERY = Has.Transform | Has.Collide | Has.RigidBody;
+const QUERY = Has.Transform | Has.RigidBody;
 
 export function sys_physics_resolve(game: Game, delta: number) {
     for (let i = 0; i < game.World.Signature.length; i++) {
@@ -24,8 +24,8 @@ let a: Vec3 = [0, 0, 0];
 
 function update(game: Game, entity: Entity) {
     let transform = game.World.Transform[entity];
-    let collide = game.World.Collide[entity];
     let rigid_body = game.World.RigidBody[entity];
+    let collide = game.World.Collide[rigid_body.ColliderId];
 
     if (rigid_body.Kind === RigidKind.Dynamic) {
         rigid_body.IsAirborne = true;

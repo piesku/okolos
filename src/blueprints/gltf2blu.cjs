@@ -33,9 +33,8 @@ let create_child = (translation, rotation, scale, color = [0.33, 0.33, 0.33, 1])
     return `
     [
         transform(${vec(translation)}, ${vec(rotation)}, [1, 1, 1]),
-        collide(true, Layer.Solid | Layer.Climbable, Layer.None, ${vec(scale)}),
-        rigid_body(RigidKind.Kinematic),
-        children([
+        ...blueprint_climbable(RigidKind.Kinematic, ${vec(scale)}),
+        child([
             transform(undefined, undefined, ${vec(scale)}),
             render_colored_shaded(
                 game.MaterialColoredGouraud,
@@ -125,13 +124,14 @@ let props = nodes.reduce((acc, node, index) => {
 //children(${props[name].colliders.join(",\n ")}),
 let result = `\
 import { animate } from "../components/com_animate.js";
-import { children } from "../components/com_children.js";
+import { children, child } from "../components/com_children.js";
 import { collide } from "../components/com_collide.js";
 import { render_instanced } from "../components/com_render.js";
 import { rigid_body, RigidKind } from "../components/com_rigid_body.js";
 import { transform } from "../components/com_transform.js";
 import { Game, Layer } from "../game.js";
 import { kolos1_anims } from "./animation_blu_kolos1.js";
+import { blueprint_climbable } from "./blu_climbable.js";
 
 ${Object.keys(props)
     .map((name) => {
