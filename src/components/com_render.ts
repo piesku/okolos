@@ -20,7 +20,8 @@ import {
     ColoredUnlitLayout,
     FogLayout,
     ForwardShadingLayout,
-    InstancedLayout,
+    InstancedColorLayout,
+    InstancedColumnLayout,
     MappedShadedLayout,
     ShadowMappingLayout,
     SingleColorLayout,
@@ -624,7 +625,9 @@ export function render_vertices(material: Material<ColoredUnlitLayout>, max: num
 
 export interface RenderInstanced {
     readonly Kind: RenderKind.Instanced;
-    Material: Material<SingleColorLayout & InstancedLayout & FogLayout>;
+    Material: Material<
+        SingleColorLayout & InstancedColumnLayout & InstancedColorLayout & FogLayout
+    >;
     Phase: RenderPhase;
     Mesh: Mesh;
     Vao: WebGLVertexArrayObject;

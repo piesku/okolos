@@ -1,7 +1,7 @@
 import {copy, create, get_translation, invert, multiply} from "../../common/mat4.js";
-import {ProjectionKind, resize_perspective} from "../../common/projection.js";
+import {ProjectionKind, resize_ortho, resize_perspective} from "../../common/projection.js";
 import {Entity} from "../../common/world.js";
-import {CameraForward, CameraKind, CameraXr, XrEye} from "../components/com_camera.js";
+import {CameraDepth, CameraForward, CameraKind, CameraXr, XrEye} from "../components/com_camera.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
 
@@ -16,17 +16,16 @@ export function sys_camera(game: Game, delta: number) {
             if (camera.Kind === CameraKind.Xr && game.XrFrame) {
                 game.Cameras.push(i);
                 update_xr(game, i, camera);
-
-                // Support only one camera per scene.
-                return;
             }
 
             if (camera.Kind === CameraKind.Forward && !game.XrFrame) {
                 game.Cameras.push(i);
                 update_forward(game, i, camera);
+            }
 
-                // Support only one camera per scene.
-                return;
+            if (camera.Kind === CameraKind.Depth) {
+                game.Cameras.push(i);
+                update_depth(game, i, camera);
             }
         }
     }
@@ -73,4 +72,21 @@ function update_xr(game: Game, entity: Entity, camera: CameraXr) {
 
         camera.Eyes.push(eye);
     }
+}
+
+function update_depth(game: Game, entity: Entity, camera: CameraDepth) {
+    if (game.ViewportResized) {
+        let aspect = camera.Target.Width / camera.Target.Height;
+        switch (camera.Projection.Kind) {
+            case ProjectionKind.Ortho: {
+                resize_ortho(camera.Projection, aspect);
+                break;
+            }
+        }
+    }
+
+    let transform = game.World.Transform[entity];
+    copy(camera.View, transform.Self);
+    multiply(camera.Pv, camera.Projection.Projection, camera.View);
+    get_translation(camera.Position, transform.World);
 }

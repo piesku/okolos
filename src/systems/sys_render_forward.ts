@@ -17,8 +17,8 @@ import {
     GL_TEXTURE_2D,
     GL_UNSIGNED_SHORT,
 } from "../../common/webgl.js";
-import {Entity} from "../../common/world.js";
-import {CameraEye, CameraKind} from "../components/com_camera.js";
+import {Entity, first_having} from "../../common/world.js";
+import {CameraDepth, CameraEye, CameraKind} from "../components/com_camera.js";
 import {Render, RenderKind, RenderPhase} from "../components/com_render.js";
 import {Game} from "../game.js";
 import {Has} from "../world.js";
@@ -32,12 +32,14 @@ export function sys_render_forward(game: Game, delta: number) {
             case CameraKind.Forward:
                 game.Gl.bindFramebuffer(GL_FRAMEBUFFER, null);
                 game.Gl.viewport(0, 0, game.ViewportWidth, game.ViewportHeight);
+                game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
                 game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 render_all(game, camera);
                 break;
             case CameraKind.Xr:
                 let layer = game.XrFrame!.session.renderState.baseLayer!;
                 game.Gl.bindFramebuffer(GL_FRAMEBUFFER, layer.framebuffer);
+                game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
                 game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 for (let eye of camera.Eyes) {
@@ -131,6 +133,28 @@ function use_material(game: Game, render: Render, eye: CameraEye) {
             game.Gl.uniform4fv(render.Material.Locations.FogColor, game.ClearColor);
             game.Gl.uniform1f(render.Material.Locations.FogDistance, game.FogDistance);
             break;
+        case RenderKind.ColoredShadows:
+            game.Gl.useProgram(render.Material.Program);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+            game.Gl.uniform3fv(render.Material.Locations.Eye, eye.Position);
+            game.Gl.uniform4fv(render.Material.Locations.LightPositions, game.LightPositions);
+            game.Gl.uniform4fv(render.Material.Locations.LightDetails, game.LightDetails);
+
+            game.Gl.activeTexture(GL_TEXTURE0);
+            game.Gl.bindTexture(GL_TEXTURE_2D, game.Targets.Sun.DepthTexture);
+            game.Gl.uniform1i(render.Material.Locations.ShadowMap, 0);
+
+            // Only one shadow source is supported.
+            let light_entity = first_having(game.World, Has.Camera | Has.Light);
+            if (light_entity) {
+                let light_camera = game.World.Camera[light_entity] as CameraDepth;
+                game.Gl.uniformMatrix4fv(
+                    render.Material.Locations.ShadowSpace,
+                    false,
+                    light_camera.Pv
+                );
+            }
+            break;
         case RenderKind.TexturedUnlit:
             game.Gl.useProgram(render.Material.Program);
             game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
@@ -182,6 +206,21 @@ function draw_entity(game: Game, entity: Entity, current_target?: WebGLTexture) 
 
             break;
         case RenderKind.ColoredShaded:
+            game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+            game.Gl.uniformMatrix4fv(render.Material.Locations.Self, false, transform.Self);
+            game.Gl.uniform4fv(render.Material.Locations.DiffuseColor, render.DiffuseColor);
+            game.Gl.uniform4fv(render.Material.Locations.SpecularColor, render.SpecularColor);
+            game.Gl.uniform1f(render.Material.Locations.Shininess, render.Shininess);
+            game.Gl.bindVertexArray(render.Vao);
+            game.Gl.drawElements(
+                render.Material.Mode,
+                render.Mesh.IndexCount,
+                GL_UNSIGNED_SHORT,
+                0
+            );
+            game.Gl.bindVertexArray(null);
+            break;
+        case RenderKind.ColoredShadows:
             game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
             game.Gl.uniformMatrix4fv(render.Material.Locations.Self, false, transform.Self);
             game.Gl.uniform4fv(render.Material.Locations.DiffuseColor, render.DiffuseColor);
