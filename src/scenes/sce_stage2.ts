@@ -5,11 +5,10 @@ import {blueprint_camera} from "../blueprints/blu_camera.js";
 import {blueprint_viewer} from "../blueprints/blu_viewer.js";
 import {collide} from "../components/com_collide.js";
 import {light_directional} from "../components/com_light.js";
-import {render_instanced} from "../components/com_render.js";
+import {render_instanced, render_textured_shaded} from "../components/com_render.js";
 import {RigidKind, rigid_body} from "../components/com_rigid_body.js";
 import {transform} from "../components/com_transform.js";
 import {Game, Layer} from "../game.js";
-import {prop_wallA} from "../props/prop_wallA.js";
 import {World} from "../world.js";
 
 export function scene_stage2(game: Game) {
@@ -67,5 +66,12 @@ export function scene_stage2(game: Game) {
 
     instantiate(game, [transform([0, 1, 0]), render_instanced(game.MeshCube, matrices, colors)]);
 
-    instantiate(game, [...prop_wallA(game), transform([0, 0.5, -6])]);
+    instantiate(game, [
+        transform([0, 0.5, -6]),
+        render_textured_shaded(
+            game.MaterialTexturedGouraud,
+            game.MeshTruck,
+            game.Textures["truck"]
+        ),
+    ]);
 }

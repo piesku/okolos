@@ -1,0 +1,13 @@
+# Blender MTL File: 'None'
+# Material Count: 1
+
+newmtl wall_metal.001
+Ns 225.000000
+Ka 0.350000 0.350000 0.350000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 3
+map_Kd /var/folders/v9/f2pyx4514gd3mn0b0s9pprvm0000gp/T/gltfimg-9hdtej93/metal_wall.png

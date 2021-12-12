@@ -8,7 +8,13 @@ import {mat_forward_textured_gouraud} from "../materials/mat_forward_textured_go
 import {mat_forward_textured_unlit} from "../materials/mat_forward_textured_unlit.js";
 import {mesh_cube} from "../meshes/cube.js";
 import {mesh_hand} from "../meshes/hand.js";
-import {mesh_wallA} from "../meshes/wallA.js";
+import {mesh_road} from "../meshes/road.js";
+import {mesh_tree} from "../meshes/tree.js";
+import {mesh_truck} from "../meshes/truck.js";
+import {mesh_wallB} from "../meshes/wallB.js";
+import {mesh_wallB_door} from "../meshes/wallB_door.js";
+import {mesh_wallB_garage} from "../meshes/wallB_garage.js";
+import {mesh_wallB_roof} from "../meshes/wallB_roof.js";
 import {sys_animate} from "./systems/sys_animate.js";
 import {sys_camera} from "./systems/sys_camera.js";
 import {sys_collide} from "./systems/sys_collide.js";
@@ -49,7 +55,13 @@ export class Game extends Game3D {
     MeshCube = mesh_cube(this.Gl);
     MeshHand = mesh_hand(this.Gl);
 
-    MeshWallA = mesh_wallA(this.Gl);
+    MeshWallB = mesh_wallB(this.Gl);
+    MeshWallBDoor = mesh_wallB_door(this.Gl);
+    MeshWallBGarage = mesh_wallB_garage(this.Gl);
+    MeshWallBRoof = mesh_wallB_roof(this.Gl);
+    MeshRoad = mesh_road(this.Gl);
+    MeshTree = mesh_tree(this.Gl);
+    MeshTruck = mesh_truck(this.Gl);
 
     Cameras: Array<Entity> = [];
     // The rendering pipeline supports 8 lights.
