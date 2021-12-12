@@ -1,6 +1,11 @@
 import {link, Material} from "../common/material.js";
 import {GL_TRIANGLES} from "../common/webgl.js";
-import {FogLayout, InstancedLayout, SingleColorLayout} from "./layout.js";
+import {
+    FogLayout,
+    InstancedColorLayout,
+    InstancedColumnLayout,
+    SingleColorLayout,
+} from "./layout.js";
 
 let vertex = `#version 300 es\n
     uniform mat4 pv;
@@ -47,7 +52,7 @@ let fragment = `#version 300 es\n
 
 export function mat_forward_instanced(
     gl: WebGL2RenderingContext
-): Material<SingleColorLayout & InstancedLayout & FogLayout> {
+): Material<SingleColorLayout & InstancedColumnLayout & InstancedColorLayout & FogLayout> {
     let program = link(gl, vertex, fragment);
     return {
         Mode: GL_TRIANGLES,
