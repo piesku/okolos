@@ -127,11 +127,14 @@ export interface SingleColorLayout {
     VertexPosition: GLint;
 }
 
-export interface InstancedLayout {
+export interface InstancedColumnLayout {
     InstanceColumn1: GLint;
     InstanceColumn2: GLint;
     InstanceColumn3: GLint;
     InstanceColumn4: GLint;
+}
+
+export interface InstancedColorLayout {
     InstanceColor: GLint;
 }
 

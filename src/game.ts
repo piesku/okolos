@@ -1,8 +1,12 @@
+import {create_depth_target} from "../common/framebuffer.js";
 import {Game3D} from "../common/game.js";
 import {Vec4} from "../common/math.js";
 import {Entity} from "../common/world.js";
 import {mat_forward_colored_gouraud} from "../materials/mat_forward_colored_gouraud.js";
+import {mat_forward_colored_shadows} from "../materials/mat_forward_colored_shadows.js";
 import {mat_forward_colored_wireframe} from "../materials/mat_forward_colored_unlit.js";
+import {mat_forward_depth} from "../materials/mat_forward_depth.js";
+import {mat_forward_depth_instanced} from "../materials/mat_forward_depth_instanced.js";
 import {mat_forward_instanced} from "../materials/mat_forward_instanced.js";
 import {mat_forward_textured_gouraud} from "../materials/mat_forward_textured_gouraud.js";
 import {mat_forward_textured_unlit} from "../materials/mat_forward_textured_unlit.js";
@@ -27,6 +31,7 @@ import {sys_move} from "./systems/sys_move.js";
 import {sys_physics_integrate} from "./systems/sys_physics_integrate.js";
 import {sys_physics_kinematic} from "./systems/sys_physics_kinematic.js";
 import {sys_physics_resolve} from "./systems/sys_physics_resolve.js";
+import {sys_render_depth} from "./systems/sys_render_depth.js";
 import {sys_render_forward} from "./systems/sys_render_forward.js";
 import {sys_resize} from "./systems/sys_resize.js";
 import {sys_transform} from "./systems/sys_transform.js";
@@ -48,10 +53,12 @@ export class Game extends Game3D {
 
     MaterialColoredWireframe = mat_forward_colored_wireframe(this.Gl);
     MaterialColoredGouraud = mat_forward_colored_gouraud(this.Gl);
+    MaterialColoredShadows = mat_forward_colored_shadows(this.Gl);
+    MaterialInstanced = mat_forward_instanced(this.Gl);
     MaterialTexturedGouraud = mat_forward_textured_gouraud(this.Gl);
     MaterialTexturedUnlit = mat_forward_textured_unlit(this.Gl);
-    MaterialInstanced = mat_forward_instanced(this.Gl);
-
+    MaterialDepth = mat_forward_depth(this.Gl);
+    MaterialDepthInstanced = mat_forward_depth_instanced(this.Gl);
     MeshCube = mesh_cube(this.Gl);
     MeshHand = mesh_hand(this.Gl);
 
@@ -67,6 +74,9 @@ export class Game extends Game3D {
     // The rendering pipeline supports 8 lights.
     LightPositions = new Float32Array(4 * 8);
     LightDetails = new Float32Array(4 * 8);
+    Targets = {
+        Sun: create_depth_target(this.Gl, 2048, 2048),
+    };
 
     ClearColor: Vec4 = [1, 1, 1, 1.0];
     FogDistance = 150;
@@ -154,6 +164,7 @@ export class Game extends Game3D {
         sys_resize(this, delta);
         sys_camera(this, delta);
         sys_light(this, delta);
+        sys_render_depth(this, delta);
         sys_render_forward(this, delta);
         sys_ui(this, delta);
     }

@@ -1,6 +1,6 @@
 import {link, Material} from "../common/material.js";
 import {GL_TRIANGLES} from "../common/webgl.js";
-import {DepthMappingLayout} from "./layout.js";
+import {DepthMappingLayout, InstancedColumnLayout} from "./layout.js";
 
 let vertex = `#version 300 es\n
 
@@ -8,9 +8,20 @@ let vertex = `#version 300 es\n
     uniform mat4 world;
 
     in vec4 attr_position;
+    in vec4 attr_column1;
+    in vec4 attr_column2;
+    in vec4 attr_column3;
+    in vec4 attr_column4;
 
     void main() {
-        gl_Position = pv * world * attr_position;
+        mat4 instance = mat4(
+            attr_column1,
+            attr_column2,
+            attr_column3,
+            attr_column4
+        );
+
+        gl_Position = pv * world * instance * attr_position;
     }
 `;
 
@@ -30,10 +41,11 @@ let fragment = `#version 300 es\n
         float z = linear_depth(gl_FragCoord.z);
         frag_color = vec4(z, z, z, 1.0);
     }
-
 `;
 
-export function mat_forward_depth(gl: WebGL2RenderingContext): Material<DepthMappingLayout> {
+export function mat_forward_depth_instanced(
+    gl: WebGL2RenderingContext
+): Material<DepthMappingLayout & InstancedColumnLayout> {
     let program = link(gl, vertex, fragment);
     return {
         Mode: GL_TRIANGLES,
@@ -42,6 +54,10 @@ export function mat_forward_depth(gl: WebGL2RenderingContext): Material<DepthMap
             Pv: gl.getUniformLocation(program, "pv")!,
             World: gl.getUniformLocation(program, "world")!,
             VertexPosition: gl.getAttribLocation(program, "attr_position")!,
+            InstanceColumn1: gl.getAttribLocation(program, "attr_column1")!,
+            InstanceColumn2: gl.getAttribLocation(program, "attr_column2")!,
+            InstanceColumn3: gl.getAttribLocation(program, "attr_column3")!,
+            InstanceColumn4: gl.getAttribLocation(program, "attr_column4")!,
         },
     };
 }
