@@ -95,6 +95,19 @@
     /**
      * @constant {number}
      */
+    const GL_DATA_UNSIGNED_BYTE = 0x1401;
+    /**
+     * @constant {number}
+     */
+    const GL_DATA_UNSIGNED_INT = 0x1405;
+    // Pixel formats
+    /**
+     * @constant {number}
+     */
+    const GL_DEPTH_COMPONENT = 0x1902;
+    /**
+     * @constant {number}
+     */
     const GL_RGBA = 0x1908;
     // Pixel types
     /**
@@ -175,11 +188,43 @@
      * @constant {number}
      */
     const GL_REPEAT = 0x2901;
+    /**
+     * @constant {number}
+     */
+    const GL_CLAMP_TO_EDGE = 0x812f;
     // Framebuffers and renderbuffers
     /**
      * @constant {number}
      */
     const GL_FRAMEBUFFER = 0x8d40;
+    /**
+     * @constant {number}
+     */
+    const GL_COLOR_ATTACHMENT0 = 0x8ce0;
+    /**
+     * @constant {number}
+     */
+    const GL_DEPTH_ATTACHMENT = 0x8d00;
+    /**
+     * @constant {number}
+     */
+    const GL_FRAMEBUFFER_COMPLETE = 0x8cd5;
+    /**
+     * @constant {number}
+     */
+    const GL_RGBA8 = 0x8058;
+    /**
+     * @constant {number}
+     */
+    const GL_TEXTURE_COMPARE_MODE = 0x884c;
+    /**
+     * @constant {number}
+     */
+    const GL_COMPARE_REF_TO_TEXTURE = 0x884e;
+    /**
+     * @constant {number}
+     */
+    const GL_DEPTH_COMPONENT24 = 0x81a6;
     // WebGL2RenderingContext
     // ==============
     const GL_UNSIGNED_SHORT = 0x1403;
@@ -205,6 +250,23 @@
         // GL_REPEAT is the default; make it explicit.
         gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        return texture;
+    }
+    function resize_texture_rgba8(gl, texture, width, height) {
+        gl.bindTexture(GL_TEXTURE_2D, texture);
+        gl.texImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_DATA_UNSIGNED_BYTE, null);
+        gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        return texture;
+    }
+    function resize_texture_depth24(gl, texture, width, height) {
+        gl.bindTexture(GL_TEXTURE_2D, texture);
+        gl.texImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_DATA_UNSIGNED_INT, null);
+        gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        gl.texParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         return texture;
     }
 
@@ -247,6 +309,24 @@
                 break;
             }
         }
+    }
+
+    function create_depth_target(gl, width, height) {
+        let target = {
+            Framebuffer: gl.createFramebuffer(),
+            Width: width,
+            Height: height,
+            ColorTexture: resize_texture_rgba8(gl, gl.createTexture(), width, height),
+            DepthTexture: resize_texture_depth24(gl, gl.createTexture(), width, height),
+        };
+        gl.bindFramebuffer(GL_FRAMEBUFFER, target.Framebuffer);
+        gl.framebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, target.DepthTexture, 0);
+        gl.framebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target.ColorTexture, 0);
+        let status = gl.checkFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE) {
+            throw new Error(`Failed to set up the framebuffer (${status}).`);
+        }
+        return target;
     }
 
     const update_span = document.getElementById("update");
@@ -497,7 +577,7 @@
         return shader;
     }
 
-    let vertex$4 = `#version 300 es\n
+    let vertex$7 = `#version 300 es\n
 
     // See Game.LightPositions and Game.LightDetails.
     const int MAX_LIGHTS = 8;
@@ -574,7 +654,7 @@
         vert_color = mix(vert_color, fog_color, smoothstep(0.0, 1.0, fog_amount));
     }
 `;
-    let fragment$4 = `#version 300 es\n
+    let fragment$7 = `#version 300 es\n
     precision mediump float;
 
     in vec4 vert_color;
@@ -586,7 +666,7 @@
     }
 `;
     function mat_forward_colored_gouraud(gl) {
-        let program = link(gl, vertex$4, fragment$4);
+        let program = link(gl, vertex$7, fragment$7);
         return {
             Mode: GL_TRIANGLES,
             Program: program,
@@ -608,7 +688,138 @@
         };
     }
 
-    let vertex$3 = `#version 300 es\n
+    let vertex$6 = `#version 300 es\n
+
+    uniform mat4 pv;
+    uniform mat4 world;
+    uniform mat4 self;
+
+    in vec4 attr_position;
+    in vec3 attr_normal;
+
+    out vec4 vert_position;
+    out vec3 vert_normal;
+
+    void main() {
+        vert_position = world * attr_position;
+        vert_normal = (vec4(attr_normal, 0.0) * self).xyz;
+        gl_Position = pv * vert_position;
+    }
+`;
+    let fragment$6 = `#version 300 es\n
+    precision mediump float;
+    precision lowp sampler2DShadow;
+
+    // See Game.LightPositions and Game.LightDetails.
+    const int MAX_LIGHTS = 8;
+
+    uniform vec3 eye;
+    uniform vec4 diffuse_color;
+    uniform vec4 specular_color;
+    uniform float shininess;
+    uniform vec4 light_positions[MAX_LIGHTS];
+    uniform vec4 light_details[MAX_LIGHTS];
+    uniform mat4 shadow_space;
+    uniform sampler2DShadow shadow_map;
+
+    in vec4 vert_position;
+    in vec3 vert_normal;
+
+    out vec4 frag_color;
+
+    // How much shadow to apply at world_pos, expressed as [min, 1]:
+    // min = completely in shadow, 1 = completely not in shadow
+    float shadow_factor(vec4 world_pos, float min) {
+        vec4 shadow_space_pos = shadow_space * world_pos;
+        vec3 shadow_space_ndc = shadow_space_pos.xyz / shadow_space_pos.w;
+        // Transform the [-1, 1] NDC to [0, 1] to match the shadow texture data.
+        shadow_space_ndc = shadow_space_ndc * 0.5 + 0.5;
+
+        // Add shadow bias to avoid shadow acne.
+        shadow_space_ndc.z -= 0.001;
+
+        return texture(shadow_map, shadow_space_ndc) * (1.0 - min) + min;
+    }
+
+    void main() {
+        vec3 world_normal = normalize(vert_normal);
+
+        vec3 view_dir = eye - vert_position.xyz;
+        vec3 view_normal = normalize(view_dir);
+
+        // Ambient light.
+        vec3 light_acc = diffuse_color.rgb * 0.1;
+
+        for (int i = 0; i < MAX_LIGHTS; i++) {
+            if (light_positions[i].w == 0.0) {
+                break;
+            }
+
+            vec3 light_color = light_details[i].rgb;
+            float light_intensity = light_details[i].a;
+
+            vec3 light_normal;
+            if (light_positions[i].w == 1.0) {
+                // Directional light.
+                light_normal = light_positions[i].xyz;
+            } else {
+                vec3 light_dir = light_positions[i].xyz - vert_position.xyz;
+                float light_dist = length(light_dir);
+                light_normal = light_dir / light_dist;
+                // Distance attenuation.
+                light_intensity /= (light_dist * light_dist);
+            }
+
+            float diffuse_factor = dot(world_normal, light_normal);
+            if (diffuse_factor > 0.0) {
+                // Diffuse color.
+                light_acc += diffuse_color.rgb * diffuse_factor * light_color * light_intensity;
+
+                if (shininess > 0.0) {
+                    // Phong reflection model.
+                    // vec3 r = reflect(-light_normal, world_normal);
+                    // float specular_angle = max(dot(r, view_normal), 0.0);
+                    // float specular_factor = pow(specular_angle, shininess);
+
+                    // Blinn-Phong reflection model.
+                    vec3 h = normalize(light_normal + view_normal);
+                    float specular_angle = max(dot(h, world_normal), 0.0);
+                    float specular_factor = pow(specular_angle, shininess);
+
+                    // Specular color.
+                    light_acc += specular_color.rgb * specular_factor * light_color * light_intensity;
+                }
+            }
+        }
+
+        vec3 shaded_rgb = light_acc * shadow_factor(vert_position, 0.5);
+        frag_color= vec4(shaded_rgb, diffuse_color.a);
+    }
+`;
+    function mat_forward_colored_shadows(gl) {
+        let program = link(gl, vertex$6, fragment$6);
+        return {
+            Mode: GL_TRIANGLES,
+            Program: program,
+            Locations: {
+                Pv: gl.getUniformLocation(program, "pv"),
+                World: gl.getUniformLocation(program, "world"),
+                Self: gl.getUniformLocation(program, "self"),
+                DiffuseColor: gl.getUniformLocation(program, "diffuse_color"),
+                SpecularColor: gl.getUniformLocation(program, "specular_color"),
+                Shininess: gl.getUniformLocation(program, "shininess"),
+                Eye: gl.getUniformLocation(program, "eye"),
+                LightPositions: gl.getUniformLocation(program, "light_positions"),
+                LightDetails: gl.getUniformLocation(program, "light_details"),
+                ShadowSpace: gl.getUniformLocation(program, "shadow_space"),
+                ShadowMap: gl.getUniformLocation(program, "shadow_map"),
+                VertexPosition: gl.getAttribLocation(program, "attr_position"),
+                VertexNormal: gl.getAttribLocation(program, "attr_normal"),
+            },
+        };
+    }
+
+    let vertex$5 = `#version 300 es\n
     uniform mat4 pv;
     uniform mat4 world;
 
@@ -618,7 +829,7 @@
         gl_Position = pv * world * attr_position;
     }
 `;
-    let fragment$3 = `#version 300 es\n
+    let fragment$5 = `#version 300 es\n
     precision mediump float;
 
     uniform vec4 color;
@@ -630,7 +841,7 @@
     }
 `;
     function mat_forward_colored_unlit(gl, mode = GL_TRIANGLES) {
-        let program = link(gl, vertex$3, fragment$3);
+        let program = link(gl, vertex$5, fragment$5);
         return {
             Mode: mode,
             Program: program,
@@ -644,6 +855,104 @@
     }
     function mat_forward_colored_wireframe(gl) {
         return mat_forward_colored_unlit(gl, GL_LINE_LOOP);
+    }
+
+    let vertex$4 = `#version 300 es\n
+
+    uniform mat4 pv;
+    uniform mat4 world;
+
+    in vec4 attr_position;
+
+    void main() {
+        gl_Position = pv * world * attr_position;
+    }
+`;
+    let fragment$4 = `#version 300 es\n
+    precision mediump float;
+
+    out vec4 frag_color;
+
+    float linear_depth(float depth) {
+        float near = 4.0;
+        float far  = 64.0;
+        return (2.0 * near) / (far + near - depth * (far - near));
+    }
+
+    void main() {
+        // Visualization only. Actual z is saved in the depth buffer.
+        float z = linear_depth(gl_FragCoord.z);
+        frag_color = vec4(z, z, z, 1.0);
+    }
+
+`;
+    function mat_forward_depth(gl) {
+        let program = link(gl, vertex$4, fragment$4);
+        return {
+            Mode: GL_TRIANGLES,
+            Program: program,
+            Locations: {
+                Pv: gl.getUniformLocation(program, "pv"),
+                World: gl.getUniformLocation(program, "world"),
+                VertexPosition: gl.getAttribLocation(program, "attr_position"),
+            },
+        };
+    }
+
+    let vertex$3 = `#version 300 es\n
+
+    uniform mat4 pv;
+    uniform mat4 world;
+
+    in vec4 attr_position;
+    in vec4 attr_column1;
+    in vec4 attr_column2;
+    in vec4 attr_column3;
+    in vec4 attr_column4;
+
+    void main() {
+        mat4 instance = mat4(
+            attr_column1,
+            attr_column2,
+            attr_column3,
+            attr_column4
+        );
+
+        gl_Position = pv * world * instance * attr_position;
+    }
+`;
+    let fragment$3 = `#version 300 es\n
+    precision mediump float;
+
+    out vec4 frag_color;
+
+    float linear_depth(float depth) {
+        float near = 4.0;
+        float far  = 64.0;
+        return (2.0 * near) / (far + near - depth * (far - near));
+    }
+
+    void main() {
+        // Visualization only. Actual z is saved in the depth buffer.
+        float z = linear_depth(gl_FragCoord.z);
+        frag_color = vec4(z, z, z, 1.0);
+    }
+`;
+    function mat_forward_depth_instanced(gl) {
+        let program = link(gl, vertex$3, fragment$3);
+        return {
+            Mode: GL_TRIANGLES,
+            Program: program,
+            Locations: {
+                Pv: gl.getUniformLocation(program, "pv"),
+                World: gl.getUniformLocation(program, "world"),
+                VertexPosition: gl.getAttribLocation(program, "attr_position"),
+                InstanceColumn1: gl.getAttribLocation(program, "attr_column1"),
+                InstanceColumn2: gl.getAttribLocation(program, "attr_column2"),
+                InstanceColumn3: gl.getAttribLocation(program, "attr_column3"),
+                InstanceColumn4: gl.getAttribLocation(program, "attr_column4"),
+            },
+        };
     }
 
     let vertex$2 = `#version 300 es\n
@@ -3470,10 +3779,10 @@
     /**
      * @module systems/sys_animate
      */
-    const QUERY$c = 2048 /* Transform */ | 1 /* Animate */;
+    const QUERY$d = 2048 /* Transform */ | 1 /* Animate */;
     function sys_animate(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$c) === QUERY$c) {
+            if ((game.World.Signature[i] & QUERY$d) === QUERY$d) {
                 update$8(game, i, delta);
             }
         }
@@ -3716,6 +4025,28 @@
         }
         return out;
     }
+    function ortho(out, top, right, bottom, left, near, far) {
+        let lr = 1 / (left - right);
+        let bt = 1 / (bottom - top);
+        let nf = 1 / (near - far);
+        out[0] = -2 * lr;
+        out[1] = 0;
+        out[2] = 0;
+        out[3] = 0;
+        out[4] = 0;
+        out[5] = -2 * bt;
+        out[6] = 0;
+        out[7] = 0;
+        out[8] = 0;
+        out[9] = 0;
+        out[10] = 2 * nf;
+        out[11] = 0;
+        out[12] = (left + right) * lr;
+        out[13] = (top + bottom) * bt;
+        out[14] = (far + near) * nf;
+        out[15] = 1;
+        return out;
+    }
     function get_forward(out, mat) {
         out[0] = mat[8];
         out[1] = mat[9];
@@ -3752,24 +4083,35 @@
         }
         invert(projection.Inverse, projection.Projection);
     }
+    function resize_ortho(projection, aspect) {
+        if (aspect > 1) {
+            // Landscape orientation.
+            ortho(projection.Projection, projection.Radius / aspect, projection.Radius, -projection.Radius / aspect, -projection.Radius, projection.Near, projection.Far);
+        }
+        else {
+            // Portrait orientation.
+            ortho(projection.Projection, projection.Radius, projection.Radius * aspect, -projection.Radius, -projection.Radius * aspect, projection.Near, projection.Far);
+        }
+        invert(projection.Inverse, projection.Projection);
+    }
 
-    const QUERY$b = 2048 /* Transform */ | 2 /* Camera */;
+    const QUERY$c = 2048 /* Transform */ | 2 /* Camera */;
     function sys_camera(game, delta) {
         game.Cameras = [];
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$b) === QUERY$b) {
+            if ((game.World.Signature[i] & QUERY$c) === QUERY$c) {
                 let camera = game.World.Camera[i];
-                if (camera.Kind === 1 /* Xr */ && game.XrFrame) {
+                if (camera.Kind === 2 /* Xr */ && game.XrFrame) {
                     game.Cameras.push(i);
                     update_xr(game, i, camera);
-                    // Support only one camera per scene.
-                    return;
                 }
                 if (camera.Kind === 0 /* Forward */ && !game.XrFrame) {
                     game.Cameras.push(i);
                     update_forward(game, i, camera);
-                    // Support only one camera per scene.
-                    return;
+                }
+                if (camera.Kind === 1 /* Depth */) {
+                    game.Cameras.push(i);
+                    update_depth(game, i, camera);
                 }
             }
         }
@@ -3809,6 +4151,21 @@
             multiply(eye.Pv, viewpoint.projectionMatrix, eye.View);
             camera.Eyes.push(eye);
         }
+    }
+    function update_depth(game, entity, camera) {
+        if (game.ViewportResized) {
+            let aspect = camera.Target.Width / camera.Target.Height;
+            switch (camera.Projection.Kind) {
+                case 1 /* Ortho */: {
+                    resize_ortho(camera.Projection, aspect);
+                    break;
+                }
+            }
+        }
+        let transform = game.World.Transform[entity];
+        copy(camera.View, transform.Self);
+        multiply(camera.Pv, camera.Projection.Projection, camera.View);
+        get_translation(camera.Position, transform.World);
     }
 
     const BOX = [
@@ -3898,13 +4255,13 @@
     /**
      * @module systems/sys_collide
      */
-    const QUERY$a = 2048 /* Transform */ | 8 /* Collide */;
+    const QUERY$b = 2048 /* Transform */ | 8 /* Collide */;
     function sys_collide(game, delta) {
         // Collect all colliders.
         let static_colliders = [];
         let dynamic_colliders = [];
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$a) === QUERY$a) {
+            if ((game.World.Signature[i] & QUERY$b) === QUERY$b) {
                 let transform = game.World.Transform[i];
                 let collider = game.World.Collide[i];
                 // Prepare the collider for this tick's detection.
@@ -3999,10 +4356,10 @@
         }
     }
 
-    const QUERY$9 = 32 /* ControlAlways */ | 2048 /* Transform */;
+    const QUERY$a = 32 /* ControlAlways */ | 2048 /* Transform */;
     function sys_control_always(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$9) === QUERY$9) {
+            if ((game.World.Signature[i] & QUERY$a) === QUERY$a) {
                 update$7(game, i);
             }
         }
@@ -4024,13 +4381,13 @@
         }
     }
 
-    const QUERY$8 = 2048 /* Transform */ | 16 /* ControlPlayer */;
+    const QUERY$9 = 2048 /* Transform */ | 16 /* ControlPlayer */;
     function sys_control_player(game, delta) {
         if (!game.XrFrame) {
             return;
         }
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$8) === QUERY$8) {
+            if ((game.World.Signature[i] & QUERY$9) === QUERY$9) {
                 update$6(game, i);
             }
         }
@@ -4219,13 +4576,13 @@
         }
     }
 
-    const QUERY$7 = 2048 /* Transform */ | 64 /* ControlXr */;
+    const QUERY$8 = 2048 /* Transform */ | 64 /* ControlXr */;
     function sys_control_pose(game, delta) {
         if (!game.XrFrame) {
             return;
         }
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$7) === QUERY$7) {
+            if ((game.World.Signature[i] & QUERY$8) === QUERY$8) {
                 update$5(game, i);
             }
         }
@@ -4406,13 +4763,13 @@
     /**
      * @module systems/sys_light
      */
-    const QUERY$6 = 2048 /* Transform */ | 128 /* Light */;
+    const QUERY$7 = 2048 /* Transform */ | 128 /* Light */;
     function sys_light(game, delta) {
         game.LightPositions.fill(0);
         game.LightDetails.fill(0);
         let counter = 0;
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$6) === QUERY$6) {
+            if ((game.World.Signature[i] & QUERY$7) === QUERY$7) {
                 update$4(game, i, counter++);
             }
         }
@@ -4440,11 +4797,11 @@
     /**
      * @module systems/sys_move
      */
-    const QUERY$5 = 2048 /* Transform */ | 256 /* Move */;
+    const QUERY$6 = 2048 /* Transform */ | 256 /* Move */;
     const NO_ROTATION = [0, 0, 0, 1];
     function sys_move(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$5) === QUERY$5) {
+            if ((game.World.Signature[i] & QUERY$6) === QUERY$6) {
                 update$3(game, i, delta);
             }
         }
@@ -4496,11 +4853,11 @@
     /**
      * @module systems/sys_physics_integrate
      */
-    const QUERY$4 = 2048 /* Transform */ | 1024 /* RigidBody */;
+    const QUERY$5 = 2048 /* Transform */ | 1024 /* RigidBody */;
     const GRAVITY = -3.721;
     function sys_physics_integrate(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$4) === QUERY$4) {
+            if ((game.World.Signature[i] & QUERY$5) === QUERY$5) {
                 update$2(game, i, delta);
             }
         }
@@ -4527,10 +4884,10 @@
     /**
      * @module systems/sys_physics_kinematic
      */
-    const QUERY$3 = 2048 /* Transform */ | 1024 /* RigidBody */;
+    const QUERY$4 = 2048 /* Transform */ | 1024 /* RigidBody */;
     function sys_physics_kinematic(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$3) === QUERY$3) {
+            if ((game.World.Signature[i] & QUERY$4) === QUERY$4) {
                 update$1(game, i, delta);
             }
         }
@@ -4552,10 +4909,10 @@
     /**
      * @module systems/sys_physics_resolve
      */
-    const QUERY$2 = 2048 /* Transform */ | 1024 /* RigidBody */;
+    const QUERY$3 = 2048 /* Transform */ | 1024 /* RigidBody */;
     function sys_physics_resolve(game, delta) {
         for (let i = 0; i < game.World.Signature.length; i++) {
-            if ((game.World.Signature[i] & QUERY$2) === QUERY$2) {
+            if ((game.World.Signature[i] & QUERY$3) === QUERY$3) {
                 update(game, i);
             }
         }
@@ -4618,6 +4975,128 @@
         }
     }
 
+    const QUERY$2 = 2048 /* Transform */ | 512 /* Render */;
+    function sys_render_depth(game, delta) {
+        for (let camera_entity of game.Cameras) {
+            let camera = game.World.Camera[camera_entity];
+            switch (camera.Kind) {
+                case 1 /* Depth */:
+                    render_depth(game, camera);
+                    break;
+            }
+        }
+    }
+    function render_depth(game, camera) {
+        game.Gl.bindFramebuffer(GL_FRAMEBUFFER, camera.Target.Framebuffer);
+        game.Gl.viewport(0, 0, camera.Target.Width, camera.Target.Height);
+        game.Gl.clearColor(0, 0, 0, 1);
+        game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        let current_kind = null;
+        let current_front_face = null;
+        for (let ent = 0; ent < game.World.Signature.length; ent++) {
+            if ((game.World.Signature[ent] & QUERY$2) === QUERY$2) {
+                let render = game.World.Render[ent];
+                if (render.Kind !== current_kind) {
+                    switch (render.Kind) {
+                        case 7 /* Vertices */:
+                            // Skip rendering, RenderVertices doesn't cast shadow for now.
+                            continue;
+                        case 8 /* Instanced */:
+                            current_kind = render.Kind;
+                            game.Gl.useProgram(game.MaterialDepthInstanced.Program);
+                            game.Gl.uniformMatrix4fv(game.MaterialDepthInstanced.Locations.Pv, false, camera.Pv);
+                            break;
+                        default:
+                            current_kind = render.Kind;
+                            game.Gl.useProgram(game.MaterialDepth.Program);
+                            game.Gl.uniformMatrix4fv(game.MaterialDepth.Locations.Pv, false, camera.Pv);
+                            break;
+                    }
+                }
+                if (render.FrontFace !== current_front_face) {
+                    current_front_face = render.FrontFace;
+                    game.Gl.frontFace(render.FrontFace);
+                }
+                draw_entity$1(game, ent);
+            }
+        }
+    }
+    function draw_entity$1(game, entity) {
+        let transform = game.World.Transform[entity];
+        let render = game.World.Render[entity];
+        switch (render.Kind) {
+            case 7 /* Vertices */:
+                break;
+            case 8 /* Instanced */: {
+                let material = game.MaterialDepthInstanced;
+                game.Gl.uniformMatrix4fv(material.Locations.World, false, transform.World);
+                game.Gl.bindBuffer(GL_ARRAY_BUFFER, render.Mesh.VertexBuffer);
+                game.Gl.enableVertexAttribArray(material.Locations.VertexPosition);
+                game.Gl.vertexAttribPointer(material.Locations.VertexPosition, 3, GL_FLOAT, false, 0, 0);
+                game.Gl.bindBuffer(GL_ARRAY_BUFFER, render.InstanceBuffer);
+                game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn1);
+                game.Gl.vertexAttribPointer(material.Locations.InstanceColumn1, 4, GL_FLOAT, false, 4 * 16, 0);
+                game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn1, 1);
+                game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn2);
+                game.Gl.vertexAttribPointer(material.Locations.InstanceColumn2, 4, GL_FLOAT, false, 4 * 16, 4 * 4);
+                game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn2, 1);
+                game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn3);
+                game.Gl.vertexAttribPointer(material.Locations.InstanceColumn3, 4, GL_FLOAT, false, 4 * 16, 4 * 8);
+                game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn3, 1);
+                game.Gl.enableVertexAttribArray(material.Locations.InstanceColumn4);
+                game.Gl.vertexAttribPointer(material.Locations.InstanceColumn4, 4, GL_FLOAT, false, 4 * 16, 4 * 12);
+                game.Gl.vertexAttribDivisor(material.Locations.InstanceColumn4, 1);
+                game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, render.Mesh.IndexBuffer);
+                let instance_count = Math.floor(render.InstanceCount);
+                game.Gl.drawElementsInstanced(GL_TRIANGLES, render.Mesh.IndexCount, GL_UNSIGNED_SHORT, 0, instance_count);
+                break;
+            }
+            default: {
+                let material = game.MaterialDepth;
+                game.Gl.uniformMatrix4fv(material.Locations.World, false, transform.World);
+                game.Gl.bindBuffer(GL_ARRAY_BUFFER, render.Mesh.VertexBuffer);
+                game.Gl.enableVertexAttribArray(material.Locations.VertexPosition);
+                game.Gl.vertexAttribPointer(material.Locations.VertexPosition, 3, GL_FLOAT, false, 0, 0);
+                game.Gl.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, render.Mesh.IndexBuffer);
+                game.Gl.drawElements(GL_TRIANGLES, render.Mesh.IndexCount, GL_UNSIGNED_SHORT, 0);
+                break;
+            }
+        }
+    }
+
+    class WorldImpl {
+        constructor(capacity = 20000) {
+            this.Signature = [];
+            this.Graveyard = [];
+            this.Capacity = capacity;
+        }
+        CreateEntity() {
+            if (this.Graveyard.length > 0) {
+                return this.Graveyard.pop();
+            }
+            if (DEBUG && this.Signature.length > this.Capacity) {
+                throw new Error("No more entities available.");
+            }
+            // Push a new signature and return its index.
+            return this.Signature.push(0) - 1;
+        }
+        DestroyEntity(entity) {
+            this.Signature[entity] = 0;
+            if (DEBUG && this.Graveyard.includes(entity)) {
+                throw new Error("Entity already in graveyard.");
+            }
+            this.Graveyard.push(entity);
+        }
+    }
+    // Other methods are free functions for the sake of tree-shakability.
+    function first_having(world, query, start_at = 0) {
+        for (let i = start_at; i < world.Signature.length; i++) {
+            if ((world.Signature[i] & query) === query) {
+                return i;
+            }
+        }
+    }
+
     /**
      * @module systems/sys_render_forward
      */
@@ -4629,12 +5108,14 @@
                 case 0 /* Forward */:
                     game.Gl.bindFramebuffer(GL_FRAMEBUFFER, null);
                     game.Gl.viewport(0, 0, game.ViewportWidth, game.ViewportHeight);
+                    game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
                     game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                     render_all(game, camera);
                     break;
-                case 1 /* Xr */:
+                case 2 /* Xr */:
                     let layer = game.XrFrame.session.renderState.baseLayer;
                     game.Gl.bindFramebuffer(GL_FRAMEBUFFER, layer.framebuffer);
+                    game.Gl.clearColor(game.ClearColor[0], game.ClearColor[1], game.ClearColor[2], 1);
                     game.Gl.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                     for (let eye of camera.Eyes) {
                         let viewport = layer.getViewport(eye.Viewpoint);
@@ -4710,6 +5191,22 @@
                 game.Gl.uniform4fv(render.Material.Locations.FogColor, game.ClearColor);
                 game.Gl.uniform1f(render.Material.Locations.FogDistance, game.FogDistance);
                 break;
+            case 2 /* ColoredShadows */:
+                game.Gl.useProgram(render.Material.Program);
+                game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
+                game.Gl.uniform3fv(render.Material.Locations.Eye, eye.Position);
+                game.Gl.uniform4fv(render.Material.Locations.LightPositions, game.LightPositions);
+                game.Gl.uniform4fv(render.Material.Locations.LightDetails, game.LightDetails);
+                game.Gl.activeTexture(GL_TEXTURE0);
+                game.Gl.bindTexture(GL_TEXTURE_2D, game.Targets.Sun.DepthTexture);
+                game.Gl.uniform1i(render.Material.Locations.ShadowMap, 0);
+                // Only one shadow source is supported.
+                let light_entity = first_having(game.World, 2 /* Camera */ | 128 /* Light */);
+                if (light_entity) {
+                    let light_camera = game.World.Camera[light_entity];
+                    game.Gl.uniformMatrix4fv(render.Material.Locations.ShadowSpace, false, light_camera.Pv);
+                }
+                break;
             case 4 /* TexturedUnlit */:
                 game.Gl.useProgram(render.Material.Program);
                 game.Gl.uniformMatrix4fv(render.Material.Locations.Pv, false, eye.Pv);
@@ -4753,6 +5250,16 @@
                 game.Gl.bindVertexArray(null);
                 break;
             case 1 /* ColoredShaded */:
+                game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
+                game.Gl.uniformMatrix4fv(render.Material.Locations.Self, false, transform.Self);
+                game.Gl.uniform4fv(render.Material.Locations.DiffuseColor, render.DiffuseColor);
+                game.Gl.uniform4fv(render.Material.Locations.SpecularColor, render.SpecularColor);
+                game.Gl.uniform1f(render.Material.Locations.Shininess, render.Shininess);
+                game.Gl.bindVertexArray(render.Vao);
+                game.Gl.drawElements(render.Material.Mode, render.Mesh.IndexCount, GL_UNSIGNED_SHORT, 0);
+                game.Gl.bindVertexArray(null);
+                break;
+            case 2 /* ColoredShadows */:
                 game.Gl.uniformMatrix4fv(render.Material.Locations.World, false, transform.World);
                 game.Gl.uniformMatrix4fv(render.Material.Locations.Self, false, transform.Self);
                 game.Gl.uniform4fv(render.Material.Locations.DiffuseColor, render.DiffuseColor);
@@ -4965,31 +5472,6 @@
         }
     }
 
-    class WorldImpl {
-        constructor(capacity = 20000) {
-            this.Signature = [];
-            this.Graveyard = [];
-            this.Capacity = capacity;
-        }
-        CreateEntity() {
-            if (this.Graveyard.length > 0) {
-                return this.Graveyard.pop();
-            }
-            if (DEBUG && this.Signature.length > this.Capacity) {
-                throw new Error("No more entities available.");
-            }
-            // Push a new signature and return its index.
-            return this.Signature.push(0) - 1;
-        }
-        DestroyEntity(entity) {
-            this.Signature[entity] = 0;
-            if (DEBUG && this.Graveyard.includes(entity)) {
-                throw new Error("Entity already in graveyard.");
-            }
-            this.Graveyard.push(entity);
-        }
-    }
-
     class World extends WorldImpl {
         constructor() {
             super(...arguments);
@@ -5017,9 +5499,12 @@
             this.Textures = {};
             this.MaterialColoredWireframe = mat_forward_colored_wireframe(this.Gl);
             this.MaterialColoredGouraud = mat_forward_colored_gouraud(this.Gl);
+            this.MaterialColoredShadows = mat_forward_colored_shadows(this.Gl);
+            this.MaterialInstanced = mat_forward_instanced(this.Gl);
             this.MaterialTexturedGouraud = mat_forward_textured_gouraud(this.Gl);
             this.MaterialTexturedUnlit = mat_forward_textured_unlit(this.Gl);
-            this.MaterialInstanced = mat_forward_instanced(this.Gl);
+            this.MaterialDepth = mat_forward_depth(this.Gl);
+            this.MaterialDepthInstanced = mat_forward_depth_instanced(this.Gl);
             this.MeshCube = mesh_cube(this.Gl);
             this.MeshHand = mesh_hand(this.Gl);
             this.MeshWallB = mesh_wallB(this.Gl);
@@ -5033,6 +5518,9 @@
             // The rendering pipeline supports 8 lights.
             this.LightPositions = new Float32Array(4 * 8);
             this.LightDetails = new Float32Array(4 * 8);
+            this.Targets = {
+                Sun: create_depth_target(this.Gl, 2048, 2048),
+            };
             this.ClearColor = [1, 1, 1, 1.0];
             this.FogDistance = 150;
             if (navigator.xr) {
@@ -5101,6 +5589,7 @@
             sys_resize(this);
             sys_camera(this);
             sys_light(this);
+            sys_render_depth(this);
             sys_render_forward(this);
             sys_ui(this);
         }
@@ -5144,7 +5633,7 @@
         return (game, entity) => {
             game.World.Signature[entity] |= 2 /* Camera */;
             game.World.Camera[entity] = {
-                Kind: 1 /* Xr */,
+                Kind: 2 /* Xr */,
                 Eyes: [],
             };
         };
@@ -5350,6 +5839,20 @@
     });
 
     /**
+     * @module components/com_light
+     */
+    function light_directional(color = [1, 1, 1], range = 1) {
+        return (game, entity) => {
+            game.World.Signature[entity] |= 128 /* Light */;
+            game.World.Light[entity] = {
+                Kind: 1 /* Directional */,
+                Color: color,
+                Intensity: range ** 2,
+            };
+        };
+    }
+
+    /**
      * @module components/com_callback
      */
     function callback(fn) {
@@ -5457,20 +5960,6 @@
                 ]),
             ]),
         ];
-    }
-
-    /**
-     * @module components/com_light
-     */
-    function light_directional(color = [1, 1, 1], range = 1) {
-        return (game, entity) => {
-            game.World.Signature[entity] |= 128 /* Light */;
-            game.World.Light[entity] = {
-                Kind: 1 /* Directional */,
-                Color: color,
-                Intensity: range ** 2,
-            };
-        };
     }
 
     function blue_road(game, type) {
